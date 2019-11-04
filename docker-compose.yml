@@ -1,0 +1,34 @@
+version: '3.1'
+services:
+  tileserver:
+    image: klokantech/tileserver-gl:latest
+    container_name: tileserver
+    restart: unless-stopped
+    tty: true
+    volumes:
+      - data:/data
+  cache:
+    image: 0815flo/swifttileservercache:latest
+    container_name: tileserver-cache
+    restart: unless-stopped
+    tty: true
+    volumes:
+      - cache:/SwiftTileserverCache/Cache
+    enviroment:
+      TILE_SERVER_URL: http://tileserver # Leave this unless tileserver is external!
+      TILE_CACHE_MAX_AGE_MINUTES: 10080 # 7 Days
+      TILE_CACHE_DELAY_SECONDS: 3600 # 1 Hour
+      STATIC_CACHE_MAX_AGE_MINUTES: 10080 # 7 Days
+      STATIC_CACHE_DELAY_SECONDS: 3600 # 1 Hour
+      STATIC_MARKER_CACHE_MAX_AGE_MINUTES: 60 # 1 Hour
+      STATIC_MARKER_CACHE_DELAY_SECONDS: 900 # 15 Minutes
+      MARKER_CACHE_MAX_AGE_MINUTES: 1440 # 1 Day
+      MARKER_CACHE_DELAY_SECONDS: 3600 # 1 Hour
+      LOGGING_LEVEL: verbose # debug, verbose or info
+    ports:
+      - 9000:9000
+volumes:
+  data:
+    driver: local
+  cache:
+    driver: local
