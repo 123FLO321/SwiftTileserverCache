@@ -6,14 +6,14 @@ services:
     restart: unless-stopped
     tty: true
     volumes:
-      - data:/data
+      - ./TileServer:/data
   cache:
     image: 0815flo/swifttileservercache:latest
     container_name: tileserver-cache
     restart: unless-stopped
     tty: true
     volumes:
-      - cache:/SwiftTileserverCache/Cache
+      - ./Cache:/SwiftTileserverCache/Cache
     environment:
       TILE_SERVER_URL: http://tileserver # Leave this unless tileserver is external!
       TILE_CACHE_MAX_AGE_MINUTES: 10080 # 7 Days
@@ -27,8 +27,3 @@ services:
       LOGGING_LEVEL: verbose # debug, verbose or info
     ports:
       - 9000:9000
-volumes:
-  data:
-    driver: local
-  cache:
-    driver: local
