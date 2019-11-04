@@ -13,8 +13,8 @@ public struct Marker: Codable, Hashable {
     public var width: UInt16
     public var latitude: Double
     public var longitude: Double
-    public var xOffset: UInt16=0
-    public var yOffset: UInt16=0
+    public var xOffset: Int16=0
+    public var yOffset: Int16=0
     
     enum CodingKeys: String, CodingKey {
         case url, height, width, latitude, longitude, xOffset = "x_offset", yOffset = "y_offset"

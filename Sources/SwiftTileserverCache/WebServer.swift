@@ -188,7 +188,9 @@ public class WebServer {
             at: Coordinate(latitude: marker.latitude, longitude: marker.longitude) ,
             relativeTo: Coordinate(latitude: centerLat, longitude: centerLon),
             zoom: zoom,
-            scale: scale
+            scale: scale,
+            extraX: marker.xOffset,
+            extraY: marker.yOffset
         )
         
         let realOffsetXPrefix: String
@@ -221,7 +223,7 @@ public class WebServer {
         
     }
     
-    private func getRealOffset(at: Coordinate, relativeTo center: Coordinate, zoom: UInt8, scale: UInt8) -> (x: Int, y: Int) {
+    private func getRealOffset(at: Coordinate, relativeTo center: Coordinate, zoom: UInt8, scale: UInt8, extraX: Int16, extraY: Int16) -> (x: Int, y: Int) {
         let realOffsetX: Int
         let realOffsetY: Int
         if center.latitude == at.latitude && center.longitude == at.longitude {
@@ -238,6 +240,6 @@ public class WebServer {
                 realOffsetY = 0
             }
         }
-        return (realOffsetX, realOffsetY)
+        return (realOffsetX + (Int(extraX) * Int(scale)), realOffsetY + (Int(extraY) * Int(scale)))
     }
 }
