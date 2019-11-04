@@ -14,7 +14,7 @@ services:
     tty: true
     volumes:
       - cache:/SwiftTileserverCache/Cache
-    enviroment:
+    environment:
       TILE_SERVER_URL: http://tileserver # Leave this unless tileserver is external!
       TILE_CACHE_MAX_AGE_MINUTES: 10080 # 7 Days
       TILE_CACHE_DELAY_SECONDS: 3600 # 1 Hour
