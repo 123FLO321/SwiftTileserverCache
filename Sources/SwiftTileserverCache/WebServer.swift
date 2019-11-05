@@ -120,17 +120,17 @@ public class WebServer {
         }
 
         var drawables = [Drawable]()
-        if let markersJSONString = request.queryParameters["markers"]?.removingPercentEncoding ?? request.queryParameters["markers"],
-           let markersJSONData = markersJSONString.data(using: .utf8),
-           let markers = try? JSONDecoder().decode([Marker].self, from: markersJSONData),
-           !markers.isEmpty {
-            drawables += markers
-        }
         if let polygonsJSONString = request.queryParameters["polygons"]?.removingPercentEncoding ?? request.queryParameters["polygons"],
            let polygonsJSONData = polygonsJSONString.data(using: .utf8),
            let polygons = try? JSONDecoder().decode([Polygon].self, from: polygonsJSONData),
            !polygons.isEmpty {
             drawables += polygons
+        }
+        if let markersJSONString = request.queryParameters["markers"]?.removingPercentEncoding ?? request.queryParameters["markers"],
+           let markersJSONData = markersJSONString.data(using: .utf8),
+           let markers = try? JSONDecoder().decode([Marker].self, from: markersJSONData),
+           !markers.isEmpty {
+            drawables += markers
         }
     
         
