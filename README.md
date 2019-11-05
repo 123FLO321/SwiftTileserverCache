@@ -27,19 +27,39 @@ The default included styles are:
 Checkout https://tileserver.readthedocs.io for a guide on how to add more styles.
 
 ### Markers
-StaticMap route accetps an url-ecoded JSON (check bellow) on markers query parameter. 
+StaticMap route accetps an url-ecoded JSON (check bellow) on `markers` query parameter. 
 Example:
 ```JSON
 [
- {
-	"url": "Marker Image URL",
-	"height": 50,
-	"width": 50,
-	"x_offset": 0,
-	"y_offset": 0,
-	"latitude": 10.0,
-	"longitude": 10.0
+  {
+    "url": "Marker Image URL",
+    "height": 50,
+    "width": 50,
+    "x_offset": 0,
+    "y_offset": 0,
+    "latitude": 10.0,
+    "longitude": 10.0
  },
+ …
+]
+```
+
+### Polygons
+StaticMap route accetps an url-ecoded JSON (check bellow) on `polygons` query parameter. 
+Example:
+```JSON
+[
+  {
+    "fill_color": "rgba(100.0%, 0.0%, 0.0%, 25.0%)",
+    "stroke_color": "black",
+    "stroke_width": 1,
+    "path": [
+      [10.0, 10.0],
+      [10.0, 11.0],
+      [11.0, 11.0],
+      [11.0, 10.0]
+    ]
+  }
  …
 ]
 ```
