@@ -119,42 +119,59 @@ public class WebServer {
             staticHitRatioLock.unlock()
         }
 
-        if let markersJSONString = request.queryParameters["markers"]?.removingPercentEncoding,
+        var drawables = [Drawable]()
+        if let markersJSONString = request.queryParameters["markers"]?.removingPercentEncoding ?? request.queryParameters["markers"],
            let markersJSONData = markersJSONString.data(using: .utf8),
            let markers = try? JSONDecoder().decode([Marker].self, from: markersJSONData),
            !markers.isEmpty {
+            drawables += markers
+        }
+        if let polygonsJSONString = request.queryParameters["polygons"]?.removingPercentEncoding ?? request.queryParameters["polygons"],
+           let polygonsJSONData = polygonsJSONString.data(using: .utf8),
+           let polygons = try? JSONDecoder().decode([Polygon].self, from: polygonsJSONData),
+           !polygons.isEmpty {
+            drawables += polygons
+        }
+    
+        
+        if !drawables.isEmpty {
             
-            let hashes = markers.map { (marker) -> String in
-                return marker.hashValue.description
+            let hashes = drawables.map { (drawable) -> String in
+                return drawable.hashString
             }
             let fileNameWithMarker = "\(FileKit.projectFolder)/Cache/StaticWithMarkers/\(style)-\(lat)-\(lon)-\(zoom)-\(width)-\(height)-\(hashes.joined(separator: ","))-\(scale).\(format)"
             if !fileManager.fileExists(atPath: fileNameWithMarker) {
                 var hashes = ""
                 var fileNameWithMarkerFull = fileName
-                for marker in markers {
-                    hashes += marker.hashValue.description
+                for drawable in drawables {
+                    hashes += drawable.hashString
                     let fileNameWithMarker = "\(FileKit.projectFolder)/Cache/StaticWithMarkers/\(style)-\(lat)-\(lon)-\(zoom)-\(width)-\(height)-\(hashes)-\(scale).\(format)"
                     
                     if !fileManager.fileExists(atPath: fileNameWithMarker) {
                         Log.info("Building Static: \(style)-\(lat)-\(lon)-\(zoom)-\(width)-\(height)-\(hashes)-\(scale).\(format)")
-                        guard let markerURLEncoded = marker.url.data(using: .utf8)?.base64EncodedString() else {
-                            Log.error("Failed to base 64 encode marker url")
-                            throw RequestError.internalServerError
+                        
+                        if let marker = drawable as? Marker {
+                            guard let markerURLEncoded = marker.url.data(using: .utf8)?.base64EncodedString() else {
+                                Log.error("Failed to base 64 encode marker url")
+                                throw RequestError.internalServerError
+                            }
+                            let markerFileName = "\(FileKit.projectFolder)/Cache/Marker/\(markerURLEncoded)"
+                            if !fileManager.fileExists(atPath: markerFileName) {
+                                Log.info("Loading Marker: \(marker.url)")
+                                try downloadFile(from: marker.url, to: markerFileName)
+                                markerHitRatioLock.lock()
+                                markerHitRatio.miss += 1
+                                markerHitRatioLock.unlock()
+                            } else {
+                                try? fileManager.setAttributes([.modificationDate: Date()], ofItemAtPath: markerFileName)
+                                markerHitRatioLock.lock()
+                                markerHitRatio.hit += 1
+                                markerHitRatioLock.unlock()
+                            }
+                            try combineImages(staticPath: fileNameWithMarkerFull, markerPath: markerFileName, destinationPath: fileNameWithMarker, marker: marker, scale: scale, centerLat: lat, centerLon: lon, zoom: zoom)
+                        } else if let polygon = drawable as? Polygon {
+                            try drawPolygon(staticPath: fileNameWithMarkerFull, destinationPath: fileNameWithMarker, polygon: polygon, scale: scale, centerLat: lat, centerLon: lon, zoom: zoom, width: width, height: height)
                         }
-                        let markerFileName = "\(FileKit.projectFolder)/Cache/Marker/\(markerURLEncoded)"
-                        if !fileManager.fileExists(atPath: markerFileName) {
-                            Log.info("Loading Marker: \(marker.url)")
-                            try downloadFile(from: marker.url, to: markerFileName)
-                            markerHitRatioLock.lock()
-                            markerHitRatio.miss += 1
-                            markerHitRatioLock.unlock()
-                        } else {
-                            try? fileManager.setAttributes([.modificationDate: Date()], ofItemAtPath: markerFileName)
-                            markerHitRatioLock.lock()
-                            markerHitRatio.hit += 1
-                            markerHitRatioLock.unlock()
-                        }
-                        try combineImages(staticPath: fileNameWithMarkerFull, markerPath: markerFileName, destinationPath: fileNameWithMarker, marker: marker, scale: scale, centerLat: lat, centerLon: lon, zoom: zoom)
                         staticMarkerHitRatioLock.lock()
                         staticMarkerHitRatio[style] = (hit: staticMarkerHitRatio[style]?.hit ?? 0, miss: (staticMarkerHitRatio[style]?.miss ?? 0) + 1)
                         staticMarkerHitRatioLock.unlock()
@@ -326,6 +343,49 @@ public class WebServer {
             "-gravity", "Center",
             "-geometry", "\(realOffsetXPrefix)\(realOffset.x)\(realOffsetYPrefix)\(realOffset.y)",
             "-composite",
+            destinationPath
+        )
+        let error = shell.runError() ?? ""
+        guard error == "" else {
+            Log.error("Failed to run magick: \(error)")
+            throw RequestError.internalServerError
+        }
+        
+    }
+    
+    private func drawPolygon(staticPath: String, destinationPath: String, polygon: Polygon, scale: UInt8, centerLat: Double, centerLon: Double, zoom: UInt8, width: UInt16, height: UInt16) throws {
+     
+        var points = [(x: Int, y: Int)]()
+    
+        for coord in polygon.path {
+            guard coord.count == 2 else {
+                throw RequestError.badGateway
+            }
+            let point = getRealOffset(
+                at: Coordinate(latitude: coord[0], longitude: coord[1]) ,
+                relativeTo: Coordinate(latitude: centerLat, longitude: centerLon),
+                zoom: zoom,
+                scale: scale,
+                extraX: 0,
+                extraY: 0
+            )
+            points.append((x: point.x + (Int(width/2*UInt16(scale))), y: point.y + Int(height/2*UInt16(scale))))
+        }
+
+        var polygonPath = ""
+        for point in points {
+            polygonPath += "\(point.x),\(point.y) "
+        }
+        polygonPath.removeLast()
+        
+        let shell = Shell(
+            "/usr/local/bin/convert",
+            staticPath,
+            "-strokewidth", "\(polygon.strokeWidth)",
+            "-fill", polygon.fillColor,
+            "-stroke", polygon.strokeColor,
+            "-gravity", "Center",
+            "-draw", "polygon \(polygonPath)",
             destinationPath
         )
         let error = shell.runError() ?? ""
