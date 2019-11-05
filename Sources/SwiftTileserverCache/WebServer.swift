@@ -192,7 +192,7 @@ public class WebServer {
         for style in tileHitRatio {
             let hit = style.value.hit
             let total = style.value.miss + style.value.hit
-            let precentage = Double(UInt16(Double(hit) / Double(total) * 10000) / 100)
+            let precentage = UInt16(Double(hit) / Double(total) * 100)
             tileCacheHitRateHTML += """
             <h3 align="center">\(style.key): \(hit)/\(total) (\(precentage)%)</h3>
             """
@@ -204,7 +204,7 @@ public class WebServer {
         for style in staticHitRatio {
             let hit = style.value.hit
             let total = style.value.miss + style.value.hit
-            let precentage = Double(UInt16(Double(hit) / Double(total) * 10000) / 100)
+            let precentage = UInt16(Double(hit) / Double(total) * 100)
             staticCacheHitRateHTML += """
             <h3 align="center">\(style.key): \(hit)/\(total) (\(precentage)%)</h3>
             """
@@ -216,7 +216,7 @@ public class WebServer {
         for style in staticMarkerHitRatio {
             let hit = style.value.hit
             let total = style.value.miss + style.value.hit
-            let precentage = Double(UInt16(Double(hit) / Double(total) * 10000) / 100)
+            let precentage = UInt16(Double(hit) / Double(total) * 100)
             staticMarkerCacheHitRatioHTML += """
             <h3 align="center">\(style.key): \(hit)/\(total) (\(precentage)%)</h3>
             """
@@ -228,7 +228,7 @@ public class WebServer {
         if markerHitRatio.hit != 0 || markerHitRatio.miss != 0 {
             let hit = markerHitRatio.hit
             let total = markerHitRatio.miss + markerHitRatio.hit
-            let precentage = Double(UInt16(Double(hit) / Double(total) * 10000) / 100)
+            let precentage = UInt16(Double(hit) / Double(total) * 100)
             markerCacheHitRatioHTML += """
             <h3 align="center">Total: \(hit)/\(total) (\(precentage)%)</h3>
             """
