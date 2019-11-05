@@ -16,6 +16,18 @@ import FoundationNetworking
 
 public class WebServer {
     
+    private let tileHitRatioLock = NSLock()
+    private var tileHitRatio = [String: (hit: UInt64, miss: UInt64)]()
+    
+    private let staticHitRatioLock = NSLock()
+    private var staticHitRatio = [String: (hit: UInt64, miss: UInt64)]()
+    
+    private let staticMarkerHitRatioLock = NSLock()
+    private var staticMarkerHitRatio = [String: (hit: UInt64, miss: UInt64)]()
+    
+    private let markerHitRatioLock = NSLock()
+    private var markerHitRatio: (hit: UInt64, miss: UInt64) = (hit: 0, miss: 0)
+    
     private let router: Router
     private let tileServerURL: String
     
@@ -23,6 +35,7 @@ public class WebServer {
         router = Router()
         self.tileServerURL = tileServerURL
         
+        router.get("/", handler: getRoot)
         router.get("/tile/:style/:z/:x/:y/:scale/:format", handler: getTile)
         router.get("/static/:style/:lat/:lon/:zoom/:width:/:height/:scale:/:format", handler: getStatic)
         
@@ -54,8 +67,14 @@ public class WebServer {
             }
             let tileURL = "\(tileServerURL)/styles/\(style)/\(z)/\(x)/\(y)\(scaleString).\(format)"
             try downloadFile(from: tileURL, to: fileName)
+            tileHitRatioLock.lock()
+            tileHitRatio[style] = (hit: tileHitRatio[style]?.hit ?? 0, miss: (tileHitRatio[style]?.miss ?? 0) + 1)
+            tileHitRatioLock.unlock()
         } else {
             try? fileManager.setAttributes([.modificationDate: Date()], ofItemAtPath: fileName)
+            tileHitRatioLock.lock()
+            tileHitRatio[style] = (hit: (tileHitRatio[style]?.hit ?? 0) + 1, miss: tileHitRatio[style]?.miss ?? 0)
+            tileHitRatioLock.unlock()
         }
         response.headers["Cache-Control"] = "max-age=604800, must-revalidate"
         Log.info("Serving Tile: \(style)-\(z)-\(x)-\(y)-\(scale).\(format)")
@@ -90,8 +109,14 @@ public class WebServer {
             
             let tileURL = "\(tileServerURL)/styles/\(style)/static/\(lon),\(lat),\(zoom)/\(width)x\(height)\(scaleString).\(format)"
             try downloadFile(from: tileURL, to: fileName)
+            staticHitRatioLock.lock()
+            staticHitRatio[style] = (hit: staticHitRatio[style]?.hit ?? 0, miss: (staticHitRatio[style]?.miss ?? 0) + 1)
+            staticHitRatioLock.unlock()
         } else {
             try? fileManager.setAttributes([.modificationDate: Date()], ofItemAtPath: fileName)
+            staticHitRatioLock.lock()
+            staticHitRatio[style] = (hit: (staticHitRatio[style]?.hit ?? 0) + 1, miss: staticHitRatio[style]?.miss ?? 0)
+            staticHitRatioLock.unlock()
         }
 
         if let markersJSONString = request.queryParameters["markers"]?.removingPercentEncoding,
@@ -120,19 +145,34 @@ public class WebServer {
                         if !fileManager.fileExists(atPath: markerFileName) {
                             Log.info("Loading Marker: \(marker.url)")
                             try downloadFile(from: marker.url, to: markerFileName)
+                            markerHitRatioLock.lock()
+                            markerHitRatio.miss += 1
+                            markerHitRatioLock.unlock()
                         } else {
                             try? fileManager.setAttributes([.modificationDate: Date()], ofItemAtPath: markerFileName)
+                            markerHitRatioLock.lock()
+                            markerHitRatio.hit += 1
+                            markerHitRatioLock.unlock()
                         }
                         try combineImages(staticPath: fileNameWithMarkerFull, markerPath: markerFileName, destinationPath: fileNameWithMarker, marker: marker, scale: scale, centerLat: lat, centerLon: lon, zoom: zoom)
+                        staticMarkerHitRatioLock.lock()
+                        staticMarkerHitRatio[style] = (hit: staticMarkerHitRatio[style]?.hit ?? 0, miss: (staticMarkerHitRatio[style]?.miss ?? 0) + 1)
+                        staticMarkerHitRatioLock.unlock()
                     } else {
                         try? fileManager.setAttributes([.modificationDate: Date()], ofItemAtPath: fileNameWithMarker)
+                        staticMarkerHitRatioLock.lock()
+                        staticMarkerHitRatio[style] = (hit: (staticMarkerHitRatio[style]?.hit ?? 0) + 1, miss: staticMarkerHitRatio[style]?.miss ?? 0)
+                        staticMarkerHitRatioLock.unlock()
                     }
-            
+
                     hashes += ","
                     fileNameWithMarkerFull = fileNameWithMarker
                 }
             } else {
                 try? fileManager.setAttributes([.modificationDate: Date()], ofItemAtPath: fileNameWithMarker)
+                staticMarkerHitRatioLock.lock()
+                staticMarkerHitRatio[style] = (hit: (staticMarkerHitRatio[style]?.hit ?? 0) + 1, miss: staticMarkerHitRatio[style]?.miss ?? 0)
+                staticMarkerHitRatioLock.unlock()
             }
             
             response.headers["Cache-Control"] = "max-age=604800, must-revalidate"
@@ -143,6 +183,79 @@ public class WebServer {
             Log.info("Serving Static: \(style)-\(lat)-\(lon)-\(zoom)-\(width)-\(height)-\(scale).\(format)")
             try response.send(fileName: fileName)
         }
+    }
+    
+    private func getRoot(request: RouterRequest, response: RouterResponse, next:  @escaping () -> Void) throws {
+        
+        var tileCacheHitRateHTML = ""
+        tileHitRatioLock.lock()
+        for style in tileHitRatio {
+            let hit = style.value.hit
+            let total = style.value.miss + style.value.hit
+            let precentage = Double(UInt16(Double(hit) / Double(total) * 10000) / 100)
+            tileCacheHitRateHTML += """
+            <h3 align="center">\(style.key): \(hit)/\(total) (\(precentage)%)</h3>
+            """
+        }
+        tileHitRatioLock.unlock()
+        
+        var staticCacheHitRateHTML = ""
+        staticHitRatioLock.lock()
+        for style in staticHitRatio {
+            let hit = style.value.hit
+            let total = style.value.miss + style.value.hit
+            let precentage = Double(UInt16(Double(hit) / Double(total) * 10000) / 100)
+            staticCacheHitRateHTML += """
+            <h3 align="center">\(style.key): \(hit)/\(total) (\(precentage)%)</h3>
+            """
+        }
+        staticHitRatioLock.unlock()
+        
+        var staticMarkerCacheHitRatioHTML = ""
+        staticMarkerHitRatioLock.lock()
+        for style in staticMarkerHitRatio {
+            let hit = style.value.hit
+            let total = style.value.miss + style.value.hit
+            let precentage = Double(UInt16(Double(hit) / Double(total) * 10000) / 100)
+            staticMarkerCacheHitRatioHTML += """
+            <h3 align="center">\(style.key): \(hit)/\(total) (\(precentage)%)</h3>
+            """
+        }
+        staticMarkerHitRatioLock.unlock()
+        
+        var markerCacheHitRatioHTML = ""
+        markerHitRatioLock.lock()
+        if markerHitRatio.hit != 0 || markerHitRatio.miss != 0 {
+            let hit = markerHitRatio.hit
+            let total = markerHitRatio.miss + markerHitRatio.hit
+            let precentage = Double(UInt16(Double(hit) / Double(total) * 10000) / 100)
+            markerCacheHitRatioHTML += """
+            <h3 align="center">Total: \(hit)/\(total) (\(precentage)%)</h3>
+            """
+        }
+        markerHitRatioLock.unlock()
+        
+        let html = """
+        <!DOCTYPE html>
+        <html lang="de">
+        <head>
+            <meta charset="utf-8"/>
+            <title>SwiftTileserver Cache</title>
+        </head>
+        <body>
+            <h1 align="center">Swift Tileserver Cache</h1><br>
+            <br><h2 align="center">Tiles Cache Hit-Rate (since restart)</h2>
+            \(tileCacheHitRateHTML)
+            <br><h2 align="center">Static Map Cache Hit-Rate (since restart)</h2>
+            \(staticCacheHitRateHTML)
+            <br><h2 align="center">Static Map with Marker Cache Hit-Rate (since restart)</h2>
+            \(staticMarkerCacheHitRatioHTML)
+            <br><h2 align="center">Marker Cache Hit-Rate (since restart)</h2>
+            \(markerCacheHitRatioHTML)
+        </body>
+        """
+        response.headers.setType("html", charset: "UTF-8")
+        response.send(html)
     }
 
     private func downloadFile(from: String, to: String) throws {
