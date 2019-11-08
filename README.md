@@ -21,9 +21,7 @@
 ### Style
 The default included styles are:
 - klokantech-basic
-- dark-matter
-- positron
--osm-bright
+- osm-bright
 Checkout https://tileserver.readthedocs.io for a guide on how to add more styles.
 
 ### Markers
