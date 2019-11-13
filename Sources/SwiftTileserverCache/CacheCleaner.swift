@@ -32,12 +32,20 @@ public class CacheCleaner {
     
     private func runOnce() throws {
         let now = Date()
-        let files = try fileManager.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.attributeModificationDateKey])
+        let files = try fileManager.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.contentAccessDateKey])
         for file in files {
-            if let date = try file.resourceValues(forKeys: [.attributeModificationDateKey]).attributeModificationDate,
-               now.timeIntervalSince(date) >= Double(maxAgeMinutes * 60) {
-                Log.info("Removing file \(file.lastPathComponent) (Too old)")
-                try fileManager.removeItem(at: file)
+            do {
+                if let date = try file.resourceValues(forKeys: [.contentAccessDateKey]).contentAccessDate,
+                   now.timeIntervalSince(date) >= Double(maxAgeMinutes * 60) {
+                    Log.info("Removing file \(file.lastPathComponent) (Too old)")
+                    do {
+                        try fileManager.removeItem(at: file)
+                    } catch {
+                        Log.warning("Failed to delete \(file.lastPathComponent): \(error)")
+                    }
+                }
+            } catch {
+                Log.warning("Failed to read contentAccessDateKey of \(file.lastPathComponent): \(error)")
             }
         }
     }

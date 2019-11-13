@@ -71,7 +71,7 @@ public class WebServer {
             tileHitRatio[style] = (hit: tileHitRatio[style]?.hit ?? 0, miss: (tileHitRatio[style]?.miss ?? 0) + 1)
             tileHitRatioLock.unlock()
         } else {
-            try? fileManager.setAttributes([.modificationDate: Date()], ofItemAtPath: fileName)
+            touch(fileName: fileName)
             tileHitRatioLock.lock()
             tileHitRatio[style] = (hit: (tileHitRatio[style]?.hit ?? 0) + 1, miss: tileHitRatio[style]?.miss ?? 0)
             tileHitRatioLock.unlock()
@@ -113,7 +113,7 @@ public class WebServer {
             staticHitRatio[style] = (hit: staticHitRatio[style]?.hit ?? 0, miss: (staticHitRatio[style]?.miss ?? 0) + 1)
             staticHitRatioLock.unlock()
         } else {
-            try? fileManager.setAttributes([.modificationDate: Date()], ofItemAtPath: fileName)
+            touch(fileName: fileName)
             staticHitRatioLock.lock()
             staticHitRatio[style] = (hit: (staticHitRatio[style]?.hit ?? 0) + 1, miss: staticHitRatio[style]?.miss ?? 0)
             staticHitRatioLock.unlock()
@@ -163,7 +163,7 @@ public class WebServer {
                                 markerHitRatio.miss += 1
                                 markerHitRatioLock.unlock()
                             } else {
-                                try? fileManager.setAttributes([.modificationDate: Date()], ofItemAtPath: markerFileName)
+                                touch(fileName: fileName)
                                 markerHitRatioLock.lock()
                                 markerHitRatio.hit += 1
                                 markerHitRatioLock.unlock()
@@ -176,7 +176,7 @@ public class WebServer {
                         staticMarkerHitRatio[style] = (hit: staticMarkerHitRatio[style]?.hit ?? 0, miss: (staticMarkerHitRatio[style]?.miss ?? 0) + 1)
                         staticMarkerHitRatioLock.unlock()
                     } else {
-                        try? fileManager.setAttributes([.modificationDate: Date()], ofItemAtPath: fileNameWithMarker)
+                        touch(fileName: fileName)
                         staticMarkerHitRatioLock.lock()
                         staticMarkerHitRatio[style] = (hit: (staticMarkerHitRatio[style]?.hit ?? 0) + 1, miss: staticMarkerHitRatio[style]?.miss ?? 0)
                         staticMarkerHitRatioLock.unlock()
@@ -186,7 +186,7 @@ public class WebServer {
                     fileNameWithMarkerFull = fileNameWithMarker
                 }
             } else {
-                try? fileManager.setAttributes([.modificationDate: Date()], ofItemAtPath: fileNameWithMarker)
+                touch(fileName: fileName)
                 staticMarkerHitRatioLock.lock()
                 staticMarkerHitRatio[style] = (hit: (staticMarkerHitRatio[style]?.hit ?? 0) + 1, miss: staticMarkerHitRatio[style]?.miss ?? 0)
                 staticMarkerHitRatioLock.unlock()
@@ -414,5 +414,16 @@ public class WebServer {
             }
         }
         return (realOffsetX + (Int(extraX) * Int(scale)), realOffsetY + (Int(extraY) * Int(scale)))
+    }
+    
+    private func touch(fileName: String) {
+        do {
+            var url = URL(fileURLWithPath: fileName)
+            var resourceValues = URLResourceValues()
+            resourceValues.contentAccessDate = Date()
+            try url.setResourceValues(resourceValues)
+        } catch {
+            Log.warning("Failed to touch \(fileName): \(error)")
+        }
     }
 }
