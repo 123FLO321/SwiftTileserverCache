@@ -417,11 +417,15 @@ public class WebServer {
     }
     
     private func touch(fileName: String) {
+		let fileManager = FileManager()
+        if !fileManager.fileExists(atPath: fileName) {
+			Log.warning("Failed to touch \(fileName)")
+		}
         do {
             var url = URL(fileURLWithPath: fileName)
             var resourceValues = URLResourceValues()
             resourceValues.contentAccessDate = Date()
-            try url.setResourceValues(resourceValues)
+        //    try url.setResourceValues(resourceValues)
         } catch {
             Log.warning("Failed to touch \(fileName): \(error)")
         }
