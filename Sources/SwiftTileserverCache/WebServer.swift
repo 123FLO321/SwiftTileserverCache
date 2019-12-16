@@ -37,7 +37,7 @@ public class WebServer {
         
         router.get("/", handler: getRoot)
         router.get("/tile/:style/:z/:x/:y/:scale/:format", handler: getTile)
-        router.get("/static/:style/:lat/:lon/:zoom/:width:/:height/:scale:/:format", handler: getStatic)
+        router.get("/static/:style/:lat/:lon/:zoom/:orientation:/:tilt:/:width:/:height/:scale:/:format", handler: getStatic)
         
         Kitura.addHTTPServer(onPort: port, with: router)
         Kitura.start()
@@ -90,6 +90,8 @@ public class WebServer {
             let width = UInt16(request.parameters["width"] ?? ""),
             let height = UInt16(request.parameters["height"] ?? ""),
             let scale = UInt8(request.parameters["scale"] ?? ""),
+            let orientation = UInt8(request.parameters["orientation"] ?? ""),
+            let tilt = UInt8(request.parameters["tilt"] ?? ""),
             scale >= 1,
             let format = request.parameters["format"],
             format == "png" || format == "jpg" else {
@@ -97,9 +99,9 @@ public class WebServer {
         }
 
         let fileManager = FileManager()
-        let fileName = "\(FileKit.projectFolder)/Cache/Static/\(style)-\(lat)-\(lon)-\(zoom)-\(width)-\(height)-\(scale).\(format)"
+        let fileName = "\(FileKit.projectFolder)/Cache/Static/\(style)-\(lat)-\(lon)-\(zoom)-\(orientation)-\(tilt)-\(width)-\(height)-\(scale).\(format)"
         if !fileManager.fileExists(atPath: fileName) {
-            Log.info("Loading Static: \(style)-\(lat)-\(lon)-\(zoom)-\(width)-\(height)-\(scale).\(format)")
+            Log.info("Loading Static: \(style)-\(lat)-\(lon)-\(zoom)-\(orientation)-\(tilt)-\(width)-\(height)-\(scale).\(format)")
             let scaleString: String
             if scale == 1 {
                 scaleString = ""
@@ -107,7 +109,7 @@ public class WebServer {
                 scaleString = "@\(scale)x"
             }
             
-            let tileURL = "\(tileServerURL)/styles/\(style)/static/\(lon),\(lat),\(zoom)/\(width)x\(height)\(scaleString).\(format)"
+            let tileURL = "\(tileServerURL)/styles/\(style)/static/\(lon),\(lat),\(zoom)@\(orientation),\(tilt)/\(width)x\(height)\(scaleString).\(format)"
             try downloadFile(from: tileURL, to: fileName)
             staticHitRatioLock.lock()
             staticHitRatio[style] = (hit: staticHitRatio[style]?.hit ?? 0, miss: (staticHitRatio[style]?.miss ?? 0) + 1)
@@ -139,16 +141,16 @@ public class WebServer {
             let hashes = drawables.map { (drawable) -> String in
                 return drawable.hashString
             }
-            let fileNameWithMarker = "\(FileKit.projectFolder)/Cache/StaticWithMarkers/\(style)-\(lat)-\(lon)-\(zoom)-\(width)-\(height)-\(hashes.joined(separator: ","))-\(scale).\(format)"
+            let fileNameWithMarker = "\(FileKit.projectFolder)/Cache/StaticWithMarkers/\(style)-\(lat)-\(lon)-\(zoom)-\(orientation)-\(tilt)-\(width)-\(height)-\(hashes.joined(separator: ","))-\(scale).\(format)"
             if !fileManager.fileExists(atPath: fileNameWithMarker) {
                 var hashes = ""
                 var fileNameWithMarkerFull = fileName
                 for drawable in drawables {
                     hashes += drawable.hashString
-                    let fileNameWithMarker = "\(FileKit.projectFolder)/Cache/StaticWithMarkers/\(style)-\(lat)-\(lon)-\(zoom)-\(width)-\(height)-\(hashes)-\(scale).\(format)"
+                    let fileNameWithMarker = "\(FileKit.projectFolder)/Cache/StaticWithMarkers/\(style)-\(lat)-\(lon)-\(zoom)-\(orientation)-\(tilt)-\(width)-\(height)-\(hashes)-\(scale).\(format)"
                     
                     if !fileManager.fileExists(atPath: fileNameWithMarker) {
-                        Log.info("Building Static: \(style)-\(lat)-\(lon)-\(zoom)-\(width)-\(height)-\(hashes)-\(scale).\(format)")
+                        Log.info("Building Static: \(style)-\(lat)-\(lon)-\(zoom)-\(orientation)-\(tilt)-\(width)-\(height)-\(hashes)-\(scale).\(format)")
                         
                         if let marker = drawable as? Marker {
                             guard let markerURLEncoded = marker.url.data(using: .utf8)?.base64EncodedString() else {
@@ -193,11 +195,11 @@ public class WebServer {
             }
             
             response.headers["Cache-Control"] = "max-age=604800, must-revalidate"
-            Log.info("Serving Static: \(style)-\(lat)-\(lon)-\(zoom)-\(width)-\(height)-\(hashes.joined(separator: ","))-\(scale).\(format)")
+            Log.info("Serving Static: \(style)-\(lat)-\(lon)-\(zoom)-\(orientation)-\(tilt)-\(width)-\(height)-\(hashes.joined(separator: ","))-\(scale).\(format)")
             try response.send(fileName: fileNameWithMarker)
         } else {
             response.headers["Cache-Control"] = "max-age=604800, must-revalidate"
-            Log.info("Serving Static: \(style)-\(lat)-\(lon)-\(zoom)-\(width)-\(height)-\(scale).\(format)")
+            Log.info("Serving Static: \(style)-\(lat)-\(lon)-\(zoom)-\(orientation)-\(tilt)-\(width)-\(height)-\(scale).\(format)")
             try response.send(fileName: fileName)
         }
     }
