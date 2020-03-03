@@ -36,13 +36,24 @@ public class WebServer {
         self.tileServerURL = tileServerURL
         
         router.get("/", handler: getRoot)
+        router.get("/styles", handler: getStyles)
         router.get("/tile/:style/:z/:x/:y/:scale/:format", handler: getTile)
         router.get("/static/:style/:lat/:lon/:zoom/:width:/:height/:scale:/:format", handler: getStatic)
         
         Kitura.addHTTPServer(onPort: port, with: router)
         Kitura.start()
     }
-    
+
+    private func getStyles(request: RouterRequest, response: RouterResponse, next:  @escaping () -> Void) throws {
+        let stylesURL = "\(tileServerURL)/styles.json"
+        let styles: [Style] = try loadJSON(from: stylesURL)
+        var returnArray = [String]()
+        for style in styles {
+            returnArray.append(style.id)
+        }
+        response.send(returnArray)
+    }
+
     private func getTile(request: RouterRequest, response: RouterResponse, next:  @escaping () -> Void) throws {
         guard
             let style = request.parameters["style"],
@@ -310,6 +321,47 @@ public class WebServer {
         if let error = errorToThrow {
             throw error
         }
+    }
+
+    private func loadJSON<T: Decodable>(from: String) throws -> T {
+        guard let fromURL = URL(string: from) else {
+            Log.error("\(from) is not a valid url")
+            throw RequestError.internalServerError
+        }
+        let semaphore = DispatchSemaphore(value: 0)
+        var json: T?
+        var errorToThrow: Error?
+        let task = URLSession.shared.dataTask(with: fromURL) { (data, response, error) in
+            if let data = data {
+                do {
+                    json = try JSONDecoder().decode(T.self, from: data)
+                } catch {
+                    Log.error("Failed to parse JSON: \(error)")
+                    errorToThrow = RequestError.internalServerError
+                }
+            } else if let response = response as? HTTPURLResponse {
+                if response.statusCode == 404 {
+                    Log.info("Failed to load JSON. Got 404")
+                    errorToThrow = RequestError.notFound
+                } else {
+                    Log.error("Failed to load JSON. Got \(response.statusCode)")
+                    errorToThrow = RequestError.internalServerError
+                }
+            } else {
+                Log.error("Failed to load JSON. No status code")
+                errorToThrow = RequestError.internalServerError
+            }
+            semaphore.signal()
+        }
+        task.resume()
+        semaphore.wait()
+        if let error = errorToThrow {
+            throw error
+        }
+        guard json != nil else {
+            throw RequestError.internalServerError
+        }
+        return json!
     }
     
     private func combineImages(staticPath: String, markerPath: String, destinationPath: String, marker: Marker, scale: UInt8, centerLat: Double, centerLon: Double, zoom: UInt8) throws {
