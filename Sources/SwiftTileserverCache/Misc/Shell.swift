@@ -7,15 +7,15 @@
 
 import Foundation
 
-class Shell {
+internal class Shell {
     
     private var args: [String]
     
-    init (_ args: String...) {
+    internal init (_ args: String...) {
         self.args = args
     }
     
-    func run(errorPipe: Any?=nil, inputPipe: Any?=nil) -> String? {
+    internal func run(errorPipe: Any?=nil, inputPipe: Any?=nil) -> String? {
         let task = Process()
         task.launchPath = "/usr/bin/env"
         task.arguments = args
@@ -33,7 +33,7 @@ class Shell {
         return String(data: data, encoding: String.Encoding.utf8)
     }
     
-    func runError(standartPipe: Any?=nil, inputPipe: Any?=nil) -> String? {
+    internal func runError(standartPipe: Any?=nil, inputPipe: Any?=nil) -> String? {
         let task = Process()
         task.launchPath = "/usr/bin/env"
         task.arguments = args

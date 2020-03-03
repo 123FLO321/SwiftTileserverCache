@@ -44,9 +44,11 @@ public class WebServer {
         Kitura.start()
     }
 
+    // MARK: - Routes
+
     private func getStyles(request: RouterRequest, response: RouterResponse, next:  @escaping () -> Void) throws {
         let stylesURL = "\(tileServerURL)/styles.json"
-        let styles: [Style] = try loadJSON(from: stylesURL)
+        let styles: [Style] = try APIUtils.loadJSON(from: stylesURL)
         var returnArray = [String]()
         for style in styles {
             returnArray.append(style.id)
@@ -77,7 +79,7 @@ public class WebServer {
                 scaleString = "@\(scale)x"
             }
             let tileURL = "\(tileServerURL)/styles/\(style)/\(z)/\(x)/\(y)\(scaleString).\(format)"
-            try downloadFile(from: tileURL, to: fileName)
+            try APIUtils.downloadFile(from: tileURL, to: fileName)
             tileHitRatioLock.lock()
             tileHitRatio[style] = (hit: tileHitRatio[style]?.hit ?? 0, miss: (tileHitRatio[style]?.miss ?? 0) + 1)
             tileHitRatioLock.unlock()
@@ -119,7 +121,7 @@ public class WebServer {
             }
             
             let tileURL = "\(tileServerURL)/styles/\(style)/static/\(lon),\(lat),\(zoom)/\(width)x\(height)\(scaleString).\(format)"
-            try downloadFile(from: tileURL, to: fileName)
+            try APIUtils.downloadFile(from: tileURL, to: fileName)
             staticHitRatioLock.lock()
             staticHitRatio[style] = (hit: staticHitRatio[style]?.hit ?? 0, miss: (staticHitRatio[style]?.miss ?? 0) + 1)
             staticHitRatioLock.unlock()
@@ -169,7 +171,7 @@ public class WebServer {
                             let markerFileName = "\(FileKit.projectFolder)/Cache/Marker/\(markerURLEncoded)"
                             if !fileManager.fileExists(atPath: markerFileName) {
                                 Log.info("Loading Marker: \(marker.url)")
-                                try downloadFile(from: marker.url, to: markerFileName)
+                                try APIUtils.downloadFile(from: marker.url, to: markerFileName)
                                 markerHitRatioLock.lock()
                                 markerHitRatio.miss += 1
                                 markerHitRatioLock.unlock()
@@ -179,9 +181,9 @@ public class WebServer {
                                 markerHitRatio.hit += 1
                                 markerHitRatioLock.unlock()
                             }
-                            try combineImages(staticPath: fileNameWithMarkerFull, markerPath: markerFileName, destinationPath: fileNameWithMarker, marker: marker, scale: scale, centerLat: lat, centerLon: lon, zoom: zoom)
+                            try ImageUtils.combineImages(staticPath: fileNameWithMarkerFull, markerPath: markerFileName, destinationPath: fileNameWithMarker, marker: marker, scale: scale, centerLat: lat, centerLon: lon, zoom: zoom)
                         } else if let polygon = drawable as? Polygon {
-                            try drawPolygon(staticPath: fileNameWithMarkerFull, destinationPath: fileNameWithMarker, polygon: polygon, scale: scale, centerLat: lat, centerLon: lon, zoom: zoom, width: width, height: height)
+                            try ImageUtils.drawPolygon(staticPath: fileNameWithMarkerFull, destinationPath: fileNameWithMarker, polygon: polygon, scale: scale, centerLat: lat, centerLon: lon, zoom: zoom, width: width, height: height)
                         }
                         staticMarkerHitRatioLock.lock()
                         staticMarkerHitRatio[style] = (hit: staticMarkerHitRatio[style]?.hit ?? 0, miss: (staticMarkerHitRatio[style]?.miss ?? 0) + 1)
@@ -286,188 +288,8 @@ public class WebServer {
         response.send(html)
     }
 
-    private func downloadFile(from: String, to: String) throws {
-        guard let fromURL = URL(string: from) else {
-            Log.error("\(from) is not a valid url")
-            throw RequestError.internalServerError
-        }
-        let toURL = URL(fileURLWithPath: to)
-        let semaphore = DispatchSemaphore(value: 0)
-        var errorToThrow: Error?
-        let task = URLSession.shared.dataTask(with: fromURL) { (data, response, error) in
-            if let data = data {
-                do {
-                    try data.write(to: toURL)
-                } catch {
-                    Log.error("Failed to save data to \(to): \(error)")
-                    errorToThrow = RequestError.internalServerError
-                }
-            } else if let response = response as? HTTPURLResponse {
-                if response.statusCode == 404 {
-                    Log.info("Failed to load file. Got 404")
-                    errorToThrow = RequestError.notFound
-                } else {
-                    Log.error("Failed to load file. Got \(response.statusCode)")
-                    errorToThrow = RequestError.internalServerError
-                }
-            } else {
-                Log.error("Failed to load file. No status code")
-                errorToThrow = RequestError.internalServerError
-            }
-            semaphore.signal()
-        }
-        task.resume()
-        semaphore.wait()
-        if let error = errorToThrow {
-            throw error
-        }
-    }
+    // MARK: - Misc
 
-    private func loadJSON<T: Decodable>(from: String) throws -> T {
-        guard let fromURL = URL(string: from) else {
-            Log.error("\(from) is not a valid url")
-            throw RequestError.internalServerError
-        }
-        let semaphore = DispatchSemaphore(value: 0)
-        var json: T?
-        var errorToThrow: Error?
-        let task = URLSession.shared.dataTask(with: fromURL) { (data, response, error) in
-            if let data = data {
-                do {
-                    json = try JSONDecoder().decode(T.self, from: data)
-                } catch {
-                    Log.error("Failed to parse JSON: \(error)")
-                    errorToThrow = RequestError.internalServerError
-                }
-            } else if let response = response as? HTTPURLResponse {
-                if response.statusCode == 404 {
-                    Log.info("Failed to load JSON. Got 404")
-                    errorToThrow = RequestError.notFound
-                } else {
-                    Log.error("Failed to load JSON. Got \(response.statusCode)")
-                    errorToThrow = RequestError.internalServerError
-                }
-            } else {
-                Log.error("Failed to load JSON. No status code")
-                errorToThrow = RequestError.internalServerError
-            }
-            semaphore.signal()
-        }
-        task.resume()
-        semaphore.wait()
-        if let error = errorToThrow {
-            throw error
-        }
-        guard json != nil else {
-            throw RequestError.internalServerError
-        }
-        return json!
-    }
-    
-    private func combineImages(staticPath: String, markerPath: String, destinationPath: String, marker: Marker, scale: UInt8, centerLat: Double, centerLon: Double, zoom: UInt8) throws {
-        
-        let realOffset = getRealOffset(
-            at: Coordinate(latitude: marker.latitude, longitude: marker.longitude) ,
-            relativeTo: Coordinate(latitude: centerLat, longitude: centerLon),
-            zoom: zoom,
-            scale: scale,
-            extraX: marker.xOffset,
-            extraY: marker.yOffset
-        )
-        
-        let realOffsetXPrefix: String
-        if realOffset.x >= 0 {
-            realOffsetXPrefix = "+"
-        } else {
-            realOffsetXPrefix = ""
-        }
-        let realOffsetYPrefix: String
-        if realOffset.y >= 0 {
-            realOffsetYPrefix = "+"
-        } else {
-            realOffsetYPrefix = ""
-        }
-        
-        let shell = Shell(
-            "/usr/local/bin/convert",
-            staticPath,
-            "(", markerPath, "-resize", "\(marker.width * UInt16(scale))x\(marker.height * UInt16(scale))", ")",
-            "-gravity", "Center",
-            "-geometry", "\(realOffsetXPrefix)\(realOffset.x)\(realOffsetYPrefix)\(realOffset.y)",
-            "-composite",
-            destinationPath
-        )
-        let error = shell.runError() ?? ""
-        guard error == "" else {
-            Log.error("Failed to run magick: \(error)")
-            throw RequestError.internalServerError
-        }
-        
-    }
-    
-    private func drawPolygon(staticPath: String, destinationPath: String, polygon: Polygon, scale: UInt8, centerLat: Double, centerLon: Double, zoom: UInt8, width: UInt16, height: UInt16) throws {
-     
-        var points = [(x: Int, y: Int)]()
-    
-        for coord in polygon.path {
-            guard coord.count == 2 else {
-                throw RequestError.badGateway
-            }
-            let point = getRealOffset(
-                at: Coordinate(latitude: coord[0], longitude: coord[1]) ,
-                relativeTo: Coordinate(latitude: centerLat, longitude: centerLon),
-                zoom: zoom,
-                scale: scale,
-                extraX: 0,
-                extraY: 0
-            )
-            points.append((x: point.x + (Int(width/2*UInt16(scale))), y: point.y + Int(height/2*UInt16(scale))))
-        }
-
-        var polygonPath = ""
-        for point in points {
-            polygonPath += "\(point.x),\(point.y) "
-        }
-        polygonPath.removeLast()
-        
-        let shell = Shell(
-            "/usr/local/bin/convert",
-            staticPath,
-            "-strokewidth", "\(polygon.strokeWidth)",
-            "-fill", polygon.fillColor,
-            "-stroke", polygon.strokeColor,
-            "-gravity", "Center",
-            "-draw", "polygon \(polygonPath)",
-            destinationPath
-        )
-        let error = shell.runError() ?? ""
-        guard error == "" else {
-            Log.error("Failed to run magick: \(error)")
-            throw RequestError.internalServerError
-        }
-        
-    }
-    
-    private func getRealOffset(at: Coordinate, relativeTo center: Coordinate, zoom: UInt8, scale: UInt8, extraX: Int16, extraY: Int16) -> (x: Int, y: Int) {
-        let realOffsetX: Int
-        let realOffsetY: Int
-        if center.latitude == at.latitude && center.longitude == at.longitude {
-            realOffsetX = 0
-            realOffsetY = 0
-        } else {
-            if let px1 = SphericalMercator().px(coordinate: Coordinate(latitude: center.latitude, longitude: center.longitude), zoom: 20),
-                let px2 = SphericalMercator().px(coordinate: Coordinate(latitude: at.latitude, longitude: at.longitude), zoom: 20) {
-                let pxScale = pow(2, Double(zoom) - 20)
-                realOffsetX = Int((px2.x - px1.x) * Double(pxScale) * Double(scale))
-                realOffsetY = Int((px2.y - px1.y) * Double(pxScale) * Double(scale))
-            } else {
-                realOffsetX = 0
-                realOffsetY = 0
-            }
-        }
-        return (realOffsetX + (Int(extraX) * Int(scale)), realOffsetY + (Int(extraY) * Int(scale)))
-    }
-    
     private func touch(fileName: String) {
         do {
             var url = URL(fileURLWithPath: fileName)
@@ -478,4 +300,5 @@ public class WebServer {
             Log.warning("Failed to touch \(fileName): \(error)")
         }
     }
+
 }
