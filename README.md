@@ -54,35 +54,34 @@ MultiStaticMap route accetps an MultiStaticMap JSON Object as POST Body:
 Example:
 ```
 {
-    "grid": [
+  "grid": [
+    {
+      "direction": string (always "first"),
+      "maps": [
         {
-            "direction": string (always "first"),
-            "maps": [
-                {
-                    "direction": string (always "first"),
-                    "map": StaticMap
-                }, {
-                    "direction": string ("right", or "bottom"),
-                    "map": StaticMap
-                }, 
-                ...
-            ]
-        },
-        {
-            "direction": string ("right", or "bottom"),
-            "maps": [
-                {
-                    "direction": string (always "first"),
-                    "map": StaticMap
-                }, {
-                    "direction": string ("right", or "bottom"),
-                    "map": StaticMap
-                }, 
-                ...
-            ]
-        },
+          "direction": string (always "first"),
+          "map": StaticMap
+        }, {
+          "direction": string ("right", or "bottom"),
+          "map": StaticMap
+        }, 
         ...
-    ]
+      ]
+    }, {
+      "direction": string ("right", or "bottom"),
+      "maps": [
+        {
+          "direction": string (always "first"),
+          "map": StaticMap
+        }, {
+          "direction": string ("right", or "bottom"),
+          "map": StaticMap
+        }, 
+        ...
+      ]
+    },
+    ...
+  ]
 }
 ```
 
