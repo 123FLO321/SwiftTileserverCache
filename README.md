@@ -188,7 +188,7 @@ https://tileserverurl/staticmap?style=klokantech-basic&latitude=47.263416&longit
                         "style": "klokantech-basic",
                         "latitude": 47.263416,
                         "longitude": 11.400512,
-                        "zoom": 17,
+                        "zoom": 15,
                         "width": 300,
                         "height": 100,
                         "scale": 1,
