@@ -32,39 +32,89 @@ Checkout https://tileserver.readthedocs.io for a guide on how to add more styles
 ### StaticMap
 StaticMap route accetps an StaticMap Object JSON Object as POST body:
 Example:
-```JSON
-[
-  {
-    "url": "Marker Image URL",
-    "height": 50,
-    "width": 50,
-    "x_offset": 0,
-    "y_offset": 0,
-    "latitude": 10.0,
-    "longitude": 10.0
- },
- …
-]
+```
+{
+  "style": string (check avilable styles at /styles),
+  "latitude": double,
+  "longitude": double,
+  "zoom": int,
+  "width": int,
+  "height": int,
+  "scale": int,
+  "format": string? (png, jpg, ...),
+  "bearing": double?,
+  "pitch": double?,
+  "markers": [Marker]?,
+  "geofences": [Geofence]?
+}
 ```
 
 ### MultiStaticMap
 MultiStaticMap route accetps an MultiStaticMap JSON Object as POST Body:
 Example:
-```JSON
-[
-  {
-    "fill_color": "rgba(100.0%, 0.0%, 0.0%, 25.0%)",
-    "stroke_color": "black",
-    "stroke_width": 1,
-    "path": [
-      [10.0, 10.0],
-      [10.0, 11.0],
-      [11.0, 11.0],
-      [11.0, 10.0]
+```
+{
+    "grid": [
+        {
+            "direction": string (always "first"),
+            "maps": [
+                {
+                    "direction": string (always "first"),
+                    "map": StaticMap
+                }, {
+                    "direction": string ("right", or "bottom"),
+                    "map": StaticMap
+                }, 
+                ...
+            ]
+        },
+        {
+            "direction": string ("right", or "bottom"),
+            "maps": [
+                {
+                    "direction": string (always "first"),
+                    "map": StaticMap
+                }, {
+                    "direction": string ("right", or "bottom"),
+                    "map": StaticMap
+                }, 
+                ...
+            ]
+        },
+        ...
     ]
-  }
- …
-]
+}
+```
+
+### Marker
+Marker JSON used in StaticMap:
+Example:
+```
+{
+  "url": string,
+  "height": int,
+  "width": int,
+  "x_offset": int,
+  "y_offset": int,
+  "latitude": double,
+  "longitude": double
+}
+```
+
+### Geofence
+Geofence JSON used in StaticMap:
+Example:
+```
+{
+  "fill_color": string (imagemagick color string),
+  "stroke_color": string (imagemagick color string),
+  "stroke_width": int,
+  "path": [
+    [double (lat), double (lon)],
+    [double, double],
+    ...
+  ]
+}
 ```
 
 ## Examples
@@ -183,8 +233,8 @@ https://tileserverurl/staticmap?style=klokantech-basic&latitude=47.263416&longit
 ![multistaticmap response](.exampleimages/multistaticmap.png)
 
 ### StaticMap using Templates
-`pokemon.json` file in `Templates` directory:
-```JSON
+`pokemon.json` file in `Templates` directory (uses [Stencil](https://stencil.fuller.li) as TemplatingEngine):
+```
 {
     "style": "klokantech-basic",
     "latitude": {{lat}},
