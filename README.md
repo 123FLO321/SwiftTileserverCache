@@ -97,7 +97,7 @@ https://tileserverurl/staticmap?style=klokantech-basic&latitude=47.263416&longit
     ]
 }
 ```
-![staticmap response][.exampleimages/staticmap.png]
+![staticmap response](.exampleimages/staticmap.png)
 
 ### MultiStaticMap
 `POST https://tileserverurl/multistaticmap`
@@ -180,7 +180,7 @@ https://tileserverurl/staticmap?style=klokantech-basic&latitude=47.263416&longit
     ]
 }
 ```
-![multistaticmap response][.exampleimages/multistaticmap.png]
+![multistaticmap response](.exampleimages/multistaticmap.png)
 
 ### StaticMap using Templates
 `pokemon.json` file in `Templates` directory:
@@ -205,4 +205,4 @@ https://tileserverurl/staticmap?style=klokantech-basic&latitude=47.263416&longit
 }
 ```
 `GET https://tileserverurl/staticmap/pokemon?id=201&lat=47.263416&lon=11.400512&form=5`
-![staticmap-template response][.exampleimages/staticmaptemplate.png]
+![staticmap-template response](.exampleimages/staticmaptemplate.png)
