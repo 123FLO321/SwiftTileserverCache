@@ -17,7 +17,9 @@ let package = Package(
         .package(url: "https://github.com/IBM-Swift/FileKit.git", from: "0.0.2"),
         .package(url: "https://github.com/IBM-Swift/LoggerAPI", .upToNextMinor(from: "1.9.0")),
         .package(url: "https://github.com/IBM-Swift/HeliumLogger", .upToNextMinor(from: "1.8.1")),
+        .package(url: "https://github.com/IBM-Swift/BlueCryptor", .upToNextMinor(from: "1.0.0")),
         .package(url: "https://github.com/ianpartridge/swift-backtrace", .upToNextMinor(from: "1.1.1")),
+        .package(url: "https://github.com/stencilproject/Stencil", .upToNextMinor(from: "0.13.0")),
     ],
     targets: [
         .target(
@@ -25,7 +27,9 @@ let package = Package(
             dependencies: [
                 "Kitura",
                 "FileKit",
-                "LoggerAPI"
+                "LoggerAPI",
+                "Cryptor",
+                "Stencil"
             ]
         ),
         .target(

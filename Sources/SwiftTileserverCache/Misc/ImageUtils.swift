@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import FileKit
 import LoggerAPI
 import Kitura
 
@@ -20,8 +21,8 @@ internal class ImageUtils {
             relativeTo: Coordinate(latitude: centerLat, longitude: centerLon),
             zoom: zoom,
             scale: scale,
-            extraX: marker.xOffset,
-            extraY: marker.yOffset
+            extraX: marker.xOffset ?? 0,
+            extraY: marker.yOffset ?? 0
         )
 
         let realOffsetXPrefix: String
@@ -49,9 +50,40 @@ internal class ImageUtils {
         let error = shell.runError() ?? ""
         guard error == "" else {
             Log.error("Failed to run magick: \(error)")
-            throw RequestError.internalServerError
+            throw RequestError(rawValue: 500, reason: "ImageMagick Error")
         }
 
+    }
+
+    internal static func combineImages(grids: [(firstPath: String, direction: CombineDirection, images: [(direction: CombineDirection, path: String)])], destinationPath: String) throws {
+        var args = [
+            "/usr/local/bin/convert"
+        ]
+        for grid in grids {
+            args.append("(")
+            args.append(grid.firstPath)
+            for image in grid.images {
+                args.append(image.path)
+                if image.direction == .bottom {
+                    args.append("-append")
+                } else {
+                    args.append("+append")
+                }
+            }
+            args.append(")")
+            if grid.direction == .bottom {
+                args.append("-append")
+            } else {
+                args.append("+append")
+            }
+        }
+        args.append(destinationPath)
+        let shell = Shell(args)
+        let error = shell.runError() ?? ""
+        guard error == "" else {
+            Log.error("Failed to run magick: \(error)")
+            throw RequestError(rawValue: 500, reason: "ImageMagick Error")
+        }
     }
 
     internal static func drawPolygon(staticPath: String, destinationPath: String, polygon: Polygon, scale: UInt8, centerLat: Double, centerLon: Double, zoom: UInt8, width: UInt16, height: UInt16) throws {
@@ -92,7 +124,7 @@ internal class ImageUtils {
         let error = shell.runError() ?? ""
         guard error == "" else {
             Log.error("Failed to run magick: \(error)")
-            throw RequestError.internalServerError
+            throw RequestError(rawValue: 500, reason: "ImageMagick Error")
         }
 
     }

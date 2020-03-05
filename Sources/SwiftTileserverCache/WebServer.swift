@@ -9,6 +9,8 @@ import Foundation
 import Kitura
 import FileKit
 import LoggerAPI
+import PathKit
+import Stencil
 
 #if os(Linux)
 import FoundationNetworking
@@ -38,6 +40,14 @@ public class WebServer {
         router.get("/", handler: getRoot)
         router.get("/styles", handler: getStyles)
         router.get("/tile/:style/:z/:x/:y/:scale/:format", handler: getTile)
+
+        router.get("/staticmap/:template", handler: getStaticMapTemplate)
+        router.get("/staticmap", handler: getStaticMap)
+        router.post("/staticmap", handler: postStaticMap)
+
+        router.get("/multistaticmap/:template", handler: getMultiStaticMapTemplate)
+        router.post("/multistaticmap", handler: postMultiStaticMap)
+
         router.get("/static/:style/:lat/:lon/:zoom/:width:/:height/:scale:/:format", handler: getStatic)
         
         Kitura.addHTTPServer(onPort: port, with: router)
@@ -46,6 +56,81 @@ public class WebServer {
 
     // MARK: - Routes
 
+    // get "/"
+    private func getRoot(request: RouterRequest, response: RouterResponse, next:  @escaping () -> Void) throws {
+
+        var tileCacheHitRateHTML = ""
+        tileHitRatioLock.lock()
+        for style in tileHitRatio {
+            let hit = style.value.hit
+            let total = style.value.miss + style.value.hit
+            let precentage = UInt16(Double(hit) / Double(total) * 100)
+            tileCacheHitRateHTML += """
+            <h3 align="center">\(style.key): \(hit)/\(total) (\(precentage)%)</h3>
+            """
+        }
+        tileHitRatioLock.unlock()
+
+        var staticCacheHitRateHTML = ""
+        staticHitRatioLock.lock()
+        for style in staticHitRatio {
+            let hit = style.value.hit
+            let total = style.value.miss + style.value.hit
+            let precentage = UInt16(Double(hit) / Double(total) * 100)
+            staticCacheHitRateHTML += """
+            <h3 align="center">\(style.key): \(hit)/\(total) (\(precentage)%)</h3>
+            """
+        }
+        staticHitRatioLock.unlock()
+
+        var staticMarkerCacheHitRatioHTML = ""
+        staticMarkerHitRatioLock.lock()
+        for style in staticMarkerHitRatio {
+            let hit = style.value.hit
+            let total = style.value.miss + style.value.hit
+            let precentage = UInt16(Double(hit) / Double(total) * 100)
+            staticMarkerCacheHitRatioHTML += """
+            <h3 align="center">\(style.key): \(hit)/\(total) (\(precentage)%)</h3>
+            """
+        }
+        staticMarkerHitRatioLock.unlock()
+
+        var markerCacheHitRatioHTML = ""
+        markerHitRatioLock.lock()
+        if markerHitRatio.hit != 0 || markerHitRatio.miss != 0 {
+            let hit = markerHitRatio.hit
+            let total = markerHitRatio.miss + markerHitRatio.hit
+            let precentage = UInt16(Double(hit) / Double(total) * 100)
+            markerCacheHitRatioHTML += """
+            <h3 align="center">Total: \(hit)/\(total) (\(precentage)%)</h3>
+            """
+        }
+        markerHitRatioLock.unlock()
+
+        let html = """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="utf-8"/>
+            <title>SwiftTileserver Cache</title>
+        </head>
+        <body>
+            <h1 align="center">Swift Tileserver Cache</h1><br>
+            <br><h2 align="center">Tiles Cache Hit-Rate (since restart)</h2>
+            \(tileCacheHitRateHTML)
+            <br><h2 align="center">Static Map Cache Hit-Rate (since restart)</h2>
+            \(staticCacheHitRateHTML)
+            <br><h2 align="center">Static Map with Marker Cache Hit-Rate (since restart)</h2>
+            \(staticMarkerCacheHitRatioHTML)
+            <br><h2 align="center">Marker Cache Hit-Rate (since restart)</h2>
+            \(markerCacheHitRatioHTML)
+        </body>
+        """
+        response.headers.setType("html", charset: "UTF-8")
+        response.send(html)
+    }
+
+    // get "/styles"
     private func getStyles(request: RouterRequest, response: RouterResponse, next:  @escaping () -> Void) throws {
         let stylesURL = "\(tileServerURL)/styles.json"
         let styles: [Style] = try APIUtils.loadJSON(from: stylesURL)
@@ -56,6 +141,7 @@ public class WebServer {
         response.send(returnArray)
     }
 
+    // get "/tile/:style/:z/:x/:y/:scale/:format"
     private func getTile(request: RouterRequest, response: RouterResponse, next:  @escaping () -> Void) throws {
         guard
             let style = request.parameters["style"],
@@ -93,8 +179,176 @@ public class WebServer {
         Log.info("Serving Tile: \(style)-\(z)-\(x)-\(y)-\(scale).\(format)")
         try response.send(fileName: fileName)
     }
-    
+
+    // get "/staticmap/:template"
+    private func getStaticMapTemplate(request: RouterRequest, response: RouterResponse, next:  @escaping () -> Void) throws {
+        let environment = Environment(loader: FileSystemLoader(paths: [Path("\(FileKit.projectFolder)/Templates")]))
+        let fileName: String
+        do {
+            var context = [String: Any]()
+            for param in request.queryParametersMultiValues {
+                if param.value.count == 1 {
+                    if param.key.lowercased().hasSuffix("json"), let data = param.value[0].data(using: .utf8), let json = try? JSONSerialization.jsonObject(with: data) {
+                        context[param.key] = json
+                    } else {
+                        context[param.key] = param.value[0]
+                    }
+                } else {
+                    context[param.key] = param.value
+                }
+            }
+            let rendered = try environment.renderTemplate(name: "\(request.parameters["template"] ?? "" ).json", context: context)
+            guard let data = rendered.data(using: .utf8) else {
+                throw DecodingError.dataCorrupted(DecodingError.Context(codingPath: [], debugDescription: "Not utf8 encoded."))
+            }
+            let staticMap = try JSONDecoder().decode(StaticMap.self, from: data)
+            fileName = try generateStaticMap(staticMap: staticMap)
+        } catch let error as DecodingError {
+            return try response.send(error.humanReadableDescription).status(.badRequest).end()
+        } catch let error as RequestError {
+            return try response.send(error.reason).status(HTTPStatusCode(rawValue: error.httpCode) ?? .internalServerError).end()
+        } catch {
+            return try response.send(error.localizedDescription).status(.badRequest).end()
+        }
+
+        response.headers["Cache-Control"] = "max-age=604800, must-revalidate"
+        try response.send(fileName: fileName)
+    }
+
+    // get "/staticmap"
+    private func getStaticMap(request: RouterRequest, response: RouterResponse, next:  @escaping () -> Void) throws {
+        guard let style = request.queryParameters["style"] else {
+            return try response.send("Missing value for \"style\"").status(.badRequest).end()
+        }
+        guard let latitude = Double(request.queryParameters["latitude"] ?? "") else {
+            return try response.send("Missing value for \"latitude\"").status(.badRequest).end()
+        }
+        guard let longitude = Double(request.queryParameters["longitude"] ?? "") else {
+            return try response.send("Missing value for \"longitude\"").status(.badRequest).end()
+        }
+        guard let zoom = UInt8(request.queryParameters["zoom"] ?? "") else {
+            return try response.send("Missing value for \"zoom\"").status(.badRequest).end()
+        }
+        guard let width = UInt16(request.queryParameters["width"] ?? "") else {
+            return try response.send("Missing value for \"width\"").status(.badRequest).end()
+        }
+        guard let height = UInt16(request.queryParameters["height"] ?? "") else {
+            return try response.send("Missing value for \"height\"").status(.badRequest).end()
+        }
+        guard let scale = UInt8(request.queryParameters["scale"] ?? "") else {
+            return try response.send("Missing value for \"scale\"").status(.badRequest).end()
+        }
+        let format = request.parameters["format"]
+        let bearing = Double(request.parameters["bearing"] ?? "")
+        let pitch = Double(request.parameters["pitch"] ?? "")
+
+        let polygons: [Polygon]?
+        if let polygonsJSONString = request.queryParameters["polygons"]?.removingPercentEncoding ?? request.queryParameters["polygons"],
+           let polygonsJSONData = polygonsJSONString.data(using: .utf8) {
+            polygons = try? JSONDecoder().decode([Polygon].self, from: polygonsJSONData)
+        } else {
+            polygons = nil
+        }
+
+        let markers: [Marker]?
+        if let markersJSONString = request.queryParameters["markers"]?.removingPercentEncoding ?? request.queryParameters["markers"],
+           let markersJSONData = markersJSONString.data(using: .utf8) {
+           markers = try? JSONDecoder().decode([Marker].self, from: markersJSONData)
+        } else {
+            markers = nil
+        }
+
+        let staticMap = StaticMap(style: style, latitude: latitude, longitude: longitude, zoom: zoom, width: width, height: height, scale: scale, format: format, bearing: bearing, pitch: pitch, markers: markers, polygons: polygons)
+
+        let fileName: String
+        do {
+            fileName = try generateStaticMap(staticMap: staticMap)
+        } catch let error as DecodingError {
+            return try response.send(error.humanReadableDescription).status(.badRequest).end()
+        } catch let error as RequestError {
+            return try response.send(error.reason).status(HTTPStatusCode(rawValue: error.httpCode) ?? .internalServerError).end()
+        } catch {
+            return try response.send(error.localizedDescription).status(.badRequest).end()
+        }
+
+        response.headers["Cache-Control"] = "max-age=604800, must-revalidate"
+        try response.send(fileName: fileName)
+    }
+
+    // post "/staticmap"
+    private func postStaticMap(request: RouterRequest, response: RouterResponse, next:  @escaping () -> Void) throws {
+        let fileName: String
+        do {
+            let staticMap = try request.read(as: StaticMap.self)
+            fileName = try generateStaticMap(staticMap: staticMap)
+        } catch let error as DecodingError {
+            return try response.send(error.humanReadableDescription).status(.badRequest).end()
+        } catch let error as RequestError {
+            return try response.send(error.reason).status(HTTPStatusCode(rawValue: error.httpCode) ?? .internalServerError).end()
+        } catch {
+            return try response.send(error.localizedDescription).status(.badRequest).end()
+        }
+
+        response.headers["Cache-Control"] = "max-age=604800, must-revalidate"
+        try response.send(fileName: fileName)
+    }
+
+    // get "/multistaticmap/:template"
+    private func getMultiStaticMapTemplate(request: RouterRequest, response: RouterResponse, next:  @escaping () -> Void) throws {
+        let environment = Environment(loader: FileSystemLoader(paths: [Path("\(FileKit.projectFolder)/Templates")]))
+        let fileName: String
+        do {
+            var context = [String: Any]()
+            for param in request.queryParametersMultiValues {
+                if param.value.count == 1 {
+                    if param.key.lowercased().hasSuffix("json"), let data = param.value[0].data(using: .utf8), let json = try? JSONSerialization.jsonObject(with: data) {
+                        context[param.key] = json
+                    } else {
+                        context[param.key] = param.value[0]
+                    }
+                } else {
+                    context[param.key] = param.value
+                }
+            }
+            let rendered = try environment.renderTemplate(name: "\(request.parameters["template"] ?? "" ).json", context: context)
+            guard let data = rendered.data(using: .utf8) else {
+                throw DecodingError.dataCorrupted(DecodingError.Context(codingPath: [], debugDescription: "Not utf8 encoded."))
+            }
+            let multiStaticMap = try JSONDecoder().decode(MultiStaticMap.self, from: data)
+            fileName = try generateMultiStaticMap(multiStaticMap: multiStaticMap)
+        } catch let error as DecodingError {
+            return try response.send(error.humanReadableDescription).status(.badRequest).end()
+        } catch let error as RequestError {
+            return try response.send(error.reason).status(HTTPStatusCode(rawValue: error.httpCode) ?? .internalServerError).end()
+        } catch {
+            return try response.send(error.localizedDescription).status(.badRequest).end()
+        }
+
+        response.headers["Cache-Control"] = "max-age=604800, must-revalidate"
+        try response.send(fileName: fileName)
+    }
+
+    // post "/multistaticmap"
+    private func postMultiStaticMap(request: RouterRequest, response: RouterResponse, next:  @escaping () -> Void) throws {
+        let fileName: String
+        do {
+            let multiStaticMap = try request.read(as: MultiStaticMap.self)
+            fileName = try generateMultiStaticMap(multiStaticMap: multiStaticMap)
+        } catch let error as DecodingError {
+            return try response.send(error.humanReadableDescription).status(.badRequest).end()
+        } catch let error as RequestError {
+            return try response.send(error.reason).status(HTTPStatusCode(rawValue: error.httpCode) ?? .internalServerError).end()
+        } catch {
+            return try response.send(error.localizedDescription).status(.badRequest).end()
+        }
+
+        response.headers["Cache-Control"] = "max-age=604800, must-revalidate"
+        try response.send(fileName: fileName)
+    }
+
+    // deprecated get "/static/:style/:lat/:lon/:zoom/:width:/:height/:scale:/:format"
     private func getStatic(request: RouterRequest, response: RouterResponse, next:  @escaping () -> Void) throws {
+        Log.warning("\"/static/:style/:lat/:lon/:zoom/:width:/:height/:scale:/:format\" is deprecated and will be removed in future versions.")
         guard
             let style = request.parameters["style"],
             let lat = Double(request.parameters["lat"] ?? ""),
@@ -109,69 +363,113 @@ public class WebServer {
                 throw RequestError.badRequest
         }
 
+        let polygons: [Polygon]?
+        if let polygonsJSONString = request.queryParameters["polygons"]?.removingPercentEncoding ?? request.queryParameters["polygons"],
+           let polygonsJSONData = polygonsJSONString.data(using: .utf8) {
+            polygons = try? JSONDecoder().decode([Polygon].self, from: polygonsJSONData)
+        } else {
+            polygons = nil
+        }
+
+        let markers: [Marker]?
+        if let markersJSONString = request.queryParameters["markers"]?.removingPercentEncoding ?? request.queryParameters["markers"],
+           let markersJSONData = markersJSONString.data(using: .utf8) {
+           markers = try? JSONDecoder().decode([Marker].self, from: markersJSONData)
+        } else {
+            markers = nil
+        }
+
+
+        let staticMap = StaticMap(style: style, latitude: lat, longitude: lon, zoom: zoom, width: width, height: height, scale: scale, format: format, bearing: nil, pitch: nil, markers: markers, polygons: polygons)
+        let fileName = try generateStaticMap(staticMap: staticMap)
+        response.headers["Cache-Control"] = "max-age=604800, must-revalidate"
+        try response.send(fileName: fileName)
+    }
+
+    // MARK: - Misc
+
+    private func generateStaticMap(staticMap: StaticMap) throws -> String {
         let fileManager = FileManager()
-        let fileName = "\(FileKit.projectFolder)/Cache/Static/\(style)-\(lat)-\(lon)-\(zoom)-\(width)-\(height)-\(scale).\(format)"
+        var staticMapNoMarkers = staticMap
+        staticMapNoMarkers.markers = nil
+        staticMapNoMarkers.polygons = nil
+        let fileName = "\(FileKit.projectFolder)/Cache/Static/\(staticMapNoMarkers.uniqueHash).\(staticMap.format ?? "png")"
         if !fileManager.fileExists(atPath: fileName) {
-            Log.info("Loading Static: \(style)-\(lat)-\(lon)-\(zoom)-\(width)-\(height)-\(scale).\(format)")
+            Log.info("Loading Static: \(staticMap)")
             let scaleString: String
-            if scale == 1 {
+            if staticMap.scale <= 1 {
                 scaleString = ""
             } else {
-                scaleString = "@\(scale)x"
+                scaleString = "@\(staticMap.scale)x"
             }
-            
-            let tileURL = "\(tileServerURL)/styles/\(style)/static/\(lon),\(lat),\(zoom)/\(width)x\(height)\(scaleString).\(format)"
-            try APIUtils.downloadFile(from: tileURL, to: fileName)
+
+            let tileURL = "\(tileServerURL)/styles/\(staticMap.style)/static/\(staticMap.longitude),\(staticMap.latitude),\(staticMap.zoom)@\(staticMap.bearing ?? 0),\(staticMap.pitch ?? 0)/\(staticMap.width)x\(staticMap.height)\(scaleString).\(staticMap.format ?? "png")"
+            do {
+                try APIUtils.downloadFile(from: tileURL, to: fileName)
+            } catch {
+                throw RequestError(rawValue: 400, reason: "Failed to load base staticmap")
+            }
             staticHitRatioLock.lock()
-            staticHitRatio[style] = (hit: staticHitRatio[style]?.hit ?? 0, miss: (staticHitRatio[style]?.miss ?? 0) + 1)
+            staticHitRatio[staticMap.style] = (hit: staticHitRatio[staticMap.style]?.hit ?? 0, miss: (staticHitRatio[staticMap.style]?.miss ?? 0) + 1)
             staticHitRatioLock.unlock()
         } else {
             touch(fileName: fileName)
             staticHitRatioLock.lock()
-            staticHitRatio[style] = (hit: (staticHitRatio[style]?.hit ?? 0) + 1, miss: staticHitRatio[style]?.miss ?? 0)
+            staticHitRatio[staticMap.style] = (hit: (staticHitRatio[staticMap.style]?.hit ?? 0) + 1, miss: staticHitRatio[staticMap.style]?.miss ?? 0)
             staticHitRatioLock.unlock()
         }
 
         var drawables = [Drawable]()
-        if let polygonsJSONString = request.queryParameters["polygons"]?.removingPercentEncoding ?? request.queryParameters["polygons"],
-           let polygonsJSONData = polygonsJSONString.data(using: .utf8),
-           let polygons = try? JSONDecoder().decode([Polygon].self, from: polygonsJSONData),
-           !polygons.isEmpty {
+        if let polygons = staticMap.polygons {
             drawables += polygons
         }
-        if let markersJSONString = request.queryParameters["markers"]?.removingPercentEncoding ?? request.queryParameters["markers"],
-           let markersJSONData = markersJSONString.data(using: .utf8),
-           let markers = try? JSONDecoder().decode([Marker].self, from: markersJSONData),
-           !markers.isEmpty {
+        if let markers = staticMap.markers {
             drawables += markers
         }
-    
-        
+
         if !drawables.isEmpty {
-            
-            let hashes = drawables.map { (drawable) -> String in
-                return drawable.hashString
+            var staticMapC = staticMap
+            if staticMapC.polygons == nil {
+                staticMapC.polygons = []
             }
-            let fileNameWithMarker = "\(FileKit.projectFolder)/Cache/StaticWithMarkers/\(style)-\(lat)-\(lon)-\(zoom)-\(width)-\(height)-\(hashes.joined(separator: ","))-\(scale).\(format)"
+            if staticMapC.markers == nil {
+                staticMapC.markers = []
+            }
+            let fileNameWithMarker = "\(FileKit.projectFolder)/Cache/StaticWithMarkers/\(staticMap.uniqueHash)).\(staticMapC.format ?? "png")"
             if !fileManager.fileExists(atPath: fileNameWithMarker) {
-                var hashes = ""
                 var fileNameWithMarkerFull = fileName
+                var addedPolygons = [Polygon]()
+                var addedMarkers = [Marker]()
                 for drawable in drawables {
-                    hashes += drawable.hashString
-                    let fileNameWithMarker = "\(FileKit.projectFolder)/Cache/StaticWithMarkers/\(style)-\(lat)-\(lon)-\(zoom)-\(width)-\(height)-\(hashes)-\(scale).\(format)"
-                    
+                    var staticMapCopy = staticMap
+                    staticMapCopy.markers = addedMarkers
+                    staticMapCopy.polygons = addedPolygons
+
+                    if let marker = drawable as? Marker {
+                        addedMarkers.append(marker)
+                    } else if let polygon = drawable as? Polygon {
+                        addedPolygons.append(polygon)
+                    }
+
+                    let fileNameWithMarker = "\(FileKit.projectFolder)/Cache/StaticWithMarkers/\(staticMap.uniqueHash)).\(staticMapCopy.format ?? "png")"
+
                     if !fileManager.fileExists(atPath: fileNameWithMarker) {
-                        Log.info("Building Static: \(style)-\(lat)-\(lon)-\(zoom)-\(width)-\(height)-\(hashes)-\(scale).\(format)")
-                        
+                        Log.info("Building Static: \(staticMap)")
+
                         if let marker = drawable as? Marker {
                             guard let markerURLEncoded = marker.url.data(using: .utf8)?.base64EncodedString() else {
                                 Log.error("Failed to base 64 encode marker url")
                                 throw RequestError.internalServerError
                             }
-                            let markerFileName = "\(FileKit.projectFolder)/Cache/Marker/\(markerURLEncoded)"
+                            let markerFormat = marker.url.components(separatedBy: ".").last ?? "png"
+                            let markerFileName = "\(FileKit.projectFolder)/Cache/Marker/\(markerURLEncoded).\(markerFormat)"
                             if !fileManager.fileExists(atPath: markerFileName) {
                                 Log.info("Loading Marker: \(marker.url)")
-                                try APIUtils.downloadFile(from: marker.url, to: markerFileName)
+                                do {
+                                    try APIUtils.downloadFile(from: marker.url, to: markerFileName)
+                                } catch {
+                                    throw RequestError(rawValue: 400, reason: "Failed to load marker: \(marker.url)")
+                                }
                                 markerHitRatioLock.lock()
                                 markerHitRatio.miss += 1
                                 markerHitRatioLock.unlock()
@@ -181,114 +479,84 @@ public class WebServer {
                                 markerHitRatio.hit += 1
                                 markerHitRatioLock.unlock()
                             }
-                            try ImageUtils.combineImages(staticPath: fileNameWithMarkerFull, markerPath: markerFileName, destinationPath: fileNameWithMarker, marker: marker, scale: scale, centerLat: lat, centerLon: lon, zoom: zoom)
+                            try ImageUtils.combineImages(staticPath: fileNameWithMarkerFull, markerPath: markerFileName, destinationPath: fileNameWithMarker, marker: marker, scale: staticMap.scale, centerLat: staticMap.latitude, centerLon: staticMap.longitude, zoom: staticMap.zoom)
                         } else if let polygon = drawable as? Polygon {
-                            try ImageUtils.drawPolygon(staticPath: fileNameWithMarkerFull, destinationPath: fileNameWithMarker, polygon: polygon, scale: scale, centerLat: lat, centerLon: lon, zoom: zoom, width: width, height: height)
+                            try ImageUtils.drawPolygon(staticPath: fileNameWithMarkerFull, destinationPath: fileNameWithMarker, polygon: polygon, scale: staticMap.scale, centerLat: staticMap.latitude, centerLon: staticMap.longitude, zoom: staticMap.zoom, width: staticMap.width, height: staticMap.height)
                         }
                         staticMarkerHitRatioLock.lock()
-                        staticMarkerHitRatio[style] = (hit: staticMarkerHitRatio[style]?.hit ?? 0, miss: (staticMarkerHitRatio[style]?.miss ?? 0) + 1)
+                        staticMarkerHitRatio[staticMap.style] = (hit: staticMarkerHitRatio[staticMap.style]?.hit ?? 0, miss: (staticMarkerHitRatio[staticMap.style]?.miss ?? 0) + 1)
                         staticMarkerHitRatioLock.unlock()
                     } else {
                         touch(fileName: fileName)
                         staticMarkerHitRatioLock.lock()
-                        staticMarkerHitRatio[style] = (hit: (staticMarkerHitRatio[style]?.hit ?? 0) + 1, miss: staticMarkerHitRatio[style]?.miss ?? 0)
+                        staticMarkerHitRatio[staticMap.style] = (hit: (staticMarkerHitRatio[staticMap.style]?.hit ?? 0) + 1, miss: staticMarkerHitRatio[staticMap.style]?.miss ?? 0)
                         staticMarkerHitRatioLock.unlock()
                     }
-
-                    hashes += ","
                     fileNameWithMarkerFull = fileNameWithMarker
                 }
             } else {
                 touch(fileName: fileName)
                 staticMarkerHitRatioLock.lock()
-                staticMarkerHitRatio[style] = (hit: (staticMarkerHitRatio[style]?.hit ?? 0) + 1, miss: staticMarkerHitRatio[style]?.miss ?? 0)
+                staticMarkerHitRatio[staticMap.style] = (hit: (staticMarkerHitRatio[staticMap.style]?.hit ?? 0) + 1, miss: staticMarkerHitRatio[staticMap.style]?.miss ?? 0)
                 staticMarkerHitRatioLock.unlock()
             }
-            
-            response.headers["Cache-Control"] = "max-age=604800, must-revalidate"
-            Log.info("Serving Static: \(style)-\(lat)-\(lon)-\(zoom)-\(width)-\(height)-\(hashes.joined(separator: ","))-\(scale).\(format)")
-            try response.send(fileName: fileNameWithMarker)
+            Log.info("Serving Static: \(staticMap)")
+            return fileNameWithMarker
         } else {
-            response.headers["Cache-Control"] = "max-age=604800, must-revalidate"
-            Log.info("Serving Static: \(style)-\(lat)-\(lon)-\(zoom)-\(width)-\(height)-\(scale).\(format)")
-            try response.send(fileName: fileName)
+            Log.info("Serving Static: \(staticMap)")
+            return fileName
         }
-    }
-    
-    private func getRoot(request: RouterRequest, response: RouterResponse, next:  @escaping () -> Void) throws {
-        
-        var tileCacheHitRateHTML = ""
-        tileHitRatioLock.lock()
-        for style in tileHitRatio {
-            let hit = style.value.hit
-            let total = style.value.miss + style.value.hit
-            let precentage = UInt16(Double(hit) / Double(total) * 100)
-            tileCacheHitRateHTML += """
-            <h3 align="center">\(style.key): \(hit)/\(total) (\(precentage)%)</h3>
-            """
-        }
-        tileHitRatioLock.unlock()
-        
-        var staticCacheHitRateHTML = ""
-        staticHitRatioLock.lock()
-        for style in staticHitRatio {
-            let hit = style.value.hit
-            let total = style.value.miss + style.value.hit
-            let precentage = UInt16(Double(hit) / Double(total) * 100)
-            staticCacheHitRateHTML += """
-            <h3 align="center">\(style.key): \(hit)/\(total) (\(precentage)%)</h3>
-            """
-        }
-        staticHitRatioLock.unlock()
-        
-        var staticMarkerCacheHitRatioHTML = ""
-        staticMarkerHitRatioLock.lock()
-        for style in staticMarkerHitRatio {
-            let hit = style.value.hit
-            let total = style.value.miss + style.value.hit
-            let precentage = UInt16(Double(hit) / Double(total) * 100)
-            staticMarkerCacheHitRatioHTML += """
-            <h3 align="center">\(style.key): \(hit)/\(total) (\(precentage)%)</h3>
-            """
-        }
-        staticMarkerHitRatioLock.unlock()
-        
-        var markerCacheHitRatioHTML = ""
-        markerHitRatioLock.lock()
-        if markerHitRatio.hit != 0 || markerHitRatio.miss != 0 {
-            let hit = markerHitRatio.hit
-            let total = markerHitRatio.miss + markerHitRatio.hit
-            let precentage = UInt16(Double(hit) / Double(total) * 100)
-            markerCacheHitRatioHTML += """
-            <h3 align="center">Total: \(hit)/\(total) (\(precentage)%)</h3>
-            """
-        }
-        markerHitRatioLock.unlock()
-        
-        let html = """
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="utf-8"/>
-            <title>SwiftTileserver Cache</title>
-        </head>
-        <body>
-            <h1 align="center">Swift Tileserver Cache</h1><br>
-            <br><h2 align="center">Tiles Cache Hit-Rate (since restart)</h2>
-            \(tileCacheHitRateHTML)
-            <br><h2 align="center">Static Map Cache Hit-Rate (since restart)</h2>
-            \(staticCacheHitRateHTML)
-            <br><h2 align="center">Static Map with Marker Cache Hit-Rate (since restart)</h2>
-            \(staticMarkerCacheHitRatioHTML)
-            <br><h2 align="center">Marker Cache Hit-Rate (since restart)</h2>
-            \(markerCacheHitRatioHTML)
-        </body>
-        """
-        response.headers.setType("html", charset: "UTF-8")
-        response.send(html)
     }
 
-    // MARK: - Misc
+    private func generateMultiStaticMap(multiStaticMap: MultiStaticMap) throws -> String {
+        guard multiStaticMap.grid.count >= 1 else {
+            throw RequestError(rawValue: 400, reason: "At least one grid is required")
+        }
+        guard multiStaticMap.grid.first?.direction == .first else {
+            throw RequestError(rawValue: 400, reason: "First grid requires direction: \"first\"")
+        }
+        for index in 1..<multiStaticMap.grid.count {
+            if multiStaticMap.grid[index].direction == .first {
+                throw RequestError(rawValue: 400, reason: "Only first gird is allowed to be direction: \"first\"")
+            }
+        }
+        for grid in multiStaticMap.grid {
+            guard grid.maps.first?.direction == .first else {
+                throw RequestError(rawValue: 400, reason: "First map in grid requires direction: \"first\"")
+            }
+            for index in 1..<grid.maps.count {
+                if grid.maps[index].direction == .first {
+                    throw RequestError(rawValue: 400, reason: "Only first map in grid is allowed to be direction: \"first\"")
+                }
+            }
+        }
+
+        let fileManager = FileManager()
+        let fileNameWithMarker = "\(FileKit.projectFolder)/Cache/StaticMulti/\(multiStaticMap.uniqueHash).png"
+        var grids = [(firstPath: String, direction: CombineDirection, images: [(direction: CombineDirection, path: String)])]()
+        if !fileManager.fileExists(atPath: fileNameWithMarker) {
+            for grid in multiStaticMap.grid {
+                var firstMapUrl = ""
+                var images = [(CombineDirection, String)]()
+                for map in grid.maps {
+                    let url = try generateStaticMap(staticMap: map.map)
+                    if map.direction == .first {
+                        firstMapUrl = url
+                    } else {
+                        images.append((map.direction, url))
+                    }
+                }
+                grids.append((firstMapUrl, grid.direction, images))
+            }
+            Log.info("Generating MutliStatic: \(multiStaticMap)")
+            try ImageUtils.combineImages(grids: grids, destinationPath: fileNameWithMarker)
+            Log.info("Serving MutliStatic: \(multiStaticMap)")
+            return fileNameWithMarker
+        } else {
+            Log.info("Serving MutliStatic: \(multiStaticMap)")
+            return fileNameWithMarker
+        }
+    }
 
     private func touch(fileName: String) {
         do {

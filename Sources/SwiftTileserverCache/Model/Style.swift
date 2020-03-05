@@ -12,9 +12,4 @@ public struct Style: Codable {
     public var version: Int
     public var name: String
     public var url: String
-
-    enum CodingKeys: String, CodingKey {
-        case id, version, name, url
-    }
-
 }

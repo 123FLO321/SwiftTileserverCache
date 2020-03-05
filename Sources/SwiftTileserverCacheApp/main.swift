@@ -37,6 +37,7 @@ let cacheDir = FileKit.projectFolderURL.appendingPathComponent("Cache", isDirect
 let tileCacheDir = cacheDir.appendingPathComponent("Tile", isDirectory: true)
 let staticCacheDir = cacheDir.appendingPathComponent("Static", isDirectory: true)
 let staticWithMarkersCacheDir = cacheDir.appendingPathComponent("StaticWithMarkers", isDirectory: true)
+let staticMultiCacheDir = cacheDir.appendingPathComponent("StaticMulti", isDirectory: true)
 let markerCacheDir = cacheDir.appendingPathComponent("Marker", isDirectory: true)
 
 Log.info("Creating missing Directories")
@@ -44,6 +45,7 @@ try? FileManager().createDirectory(at: cacheDir, withIntermediateDirectories: fa
 try? FileManager().createDirectory(at: tileCacheDir, withIntermediateDirectories: false, attributes: nil)
 try? FileManager().createDirectory(at: staticCacheDir, withIntermediateDirectories: false, attributes: nil)
 try? FileManager().createDirectory(at: staticWithMarkersCacheDir, withIntermediateDirectories: false, attributes: nil)
+try? FileManager().createDirectory(at: staticMultiCacheDir, withIntermediateDirectories: false, attributes: nil)
 try? FileManager().createDirectory(at: markerCacheDir, withIntermediateDirectories: false, attributes: nil)
 
 let webserver = WebServer(tileServerURL: tileServerURL)
@@ -64,6 +66,12 @@ if let maxAgeMinutes = UInt32(ProcessInfo.processInfo.environment["STATIC_MARKER
     let clearDelaySeconds = UInt32(ProcessInfo.processInfo.environment["STATIC_MARKER_CACHE_DELAY_SECONDS"] ?? "") ?? 900
     Log.info("Starting CacheCleaner for StaticWithMarkers with maxAgeMinutes: \(maxAgeMinutes) and clearDelaySeconds: \(clearDelaySeconds)")
     _ = CacheCleaner(folder: staticWithMarkersCacheDir, maxAgeMinutes: maxAgeMinutes, clearDelaySeconds: clearDelaySeconds)
+}
+
+if let maxAgeMinutes = UInt32(ProcessInfo.processInfo.environment["STATIC_MUTLI_CACHE_MAX_AGE_MINUTES"] ?? "") {
+    let clearDelaySeconds = UInt32(ProcessInfo.processInfo.environment["STATIC_MULTI_CACHE_DELAY_SECONDS"] ?? "") ?? 900
+    Log.info("Starting CacheCleaner for StaticMulti with maxAgeMinutes: \(maxAgeMinutes) and clearDelaySeconds: \(clearDelaySeconds)")
+    _ = CacheCleaner(folder: staticMultiCacheDir, maxAgeMinutes: maxAgeMinutes, clearDelaySeconds: clearDelaySeconds)
 }
 
 if let maxAgeMinutes = UInt32(ProcessInfo.processInfo.environment["MARKER_CACHE_MAX_AGE_MINUTES"] ?? "") {

@@ -7,8 +7,4 @@
 
 import Foundation
 
-public protocol Drawable {
-
-    var hashString: String { get }
-    
-}
+public protocol Drawable {}

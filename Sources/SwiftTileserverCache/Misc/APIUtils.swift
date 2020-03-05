@@ -22,7 +22,7 @@ internal class APIUtils {
         let semaphore = DispatchSemaphore(value: 0)
         var errorToThrow: Error?
         let task = URLSession.shared.dataTask(with: fromURL) { (data, response, error) in
-            if let data = data {
+            if (response as? HTTPURLResponse)?.statusCode.description.starts(with: "2") ?? false, let data = data {
                 do {
                     try data.write(to: toURL)
                 } catch {

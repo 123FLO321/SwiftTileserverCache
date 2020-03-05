@@ -15,17 +15,22 @@
 
 ## Formats
 
-- Tiles: `tile/{style}/{z}/{x}/{y}/{scale}/{format}`
-- StaticMap: `static/{style}/{lat}/{lon}/{zoom}/{width}/{height}/{scale}/{format}`
+- Tiles: 
+    - `GET tile/{style}/{z}/{x}/{y}/{scale}/{format}`
+- StaticMap: 
+    - `POST /staticmap` (StaticMap Object in JSON Format as POST body)
+    - `GET /staticmap` (SaticMap Object in URL Parameters. Markers and Polygons require POST)
+    - `GET /staticmap/:template` (Template Enviroment parsed from URL Parameters. Parameters ending in `json` will be parsed as json. Multiple instances of same Parameter will be parsed as array)
+- MutliStaticMap:
+    - `POST /multistaticmap` (MultiStaticMap Object in JSON Format as POST body)
+    - `GET /multistaticmap/:template` (Template Enviroment parsed from URL Parameters. Parameters ending in `json` will be parsed as json. Multiple instances of same Parameter will be parsed as array)
 
 ### Style
-The default included styles are:
-- klokantech-basic
-- osm-bright
+Get a list of styles by visiting `/styles`
 Checkout https://tileserver.readthedocs.io for a guide on how to add more styles.
 
-### Markers
-StaticMap route accetps an url-ecoded JSON (check bellow) on `markers` query parameter. 
+### StaticMap
+StaticMap route accetps an StaticMap Object JSON Object as POST body:
 Example:
 ```JSON
 [
@@ -42,8 +47,8 @@ Example:
 ]
 ```
 
-### Polygons
-StaticMap route accetps an url-ecoded JSON (check bellow) on `polygons` query parameter. 
+### MultiStaticMap
+MultiStaticMap route accetps an MultiStaticMap JSON Object as POST Body:
 Example:
 ```JSON
 [
@@ -68,7 +73,136 @@ Example:
 https://tileserverurl/tile/klokantech-basic/{z}/{x}/{y}/2/png
 
 ### StaticMap
-https://tileserverurl/static/klokantech-basic/47.263416/11.400512/17/500/500/2/png
+https://tileserverurl/staticmap?style=klokantech-basic&latitude=47.263416&longitude=11.400512&zoom=17&width=500&height=500&scale=2
 
 ### StaticMap with Markers
-https://tileserverurl/static/klokantech-basic/47.263416/11.400512/17/500/500/2/png?markers=%5B%7B%22url%22%3A%22https%3A%2F%2Fraw.githubusercontent.com%2Fnileplumb%2FPkmnShuffleMap%2Fmaster%2FNOVA_Sprites%2F201.png%22%2C%22height%22%3A50%2C%22width%22%3A50%2C%22x_offset%22%3A0%2C%22y_offset%22%3A0%2C%22latitude%22%3A%2047.263416%2C%22longitude%22%3A%2011.400512%7D%5D
+`POST https://tileserverurl/staticmap`
+```JSON
+{
+    "style": "klokantech-basic",
+    "latitude": 47.263416,
+    "longitude": 11.400512,
+    "zoom": 17,
+    "width": 500,
+    "height": 500,
+    "scale": 1,
+    "markers": [
+        {
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Map_marker.svg/1200px-Map_marker.svg.png",
+            "latitude": 47.263416,
+            "longitude": 11.400512,
+            "width": 50,
+            "height": 50
+        }
+    ]
+}
+```
+![staticmap response][.exampleimages/staticmap.png]
+
+### MultiStaticMap
+`POST https://tileserverurl/multistaticmap`
+```JSON
+{
+    "grid": [
+        {
+            "direction": "first",
+            "maps": [
+                {
+                    "direction": "first",
+                    "map": {
+                        "style": "klokantech-basic",
+                        "latitude": 47.263416,
+                        "longitude": 11.400512,
+                        "zoom": 17,
+                        "width": 500,
+                        "height": 250,
+                        "scale": 1,
+                        "markers": [
+                            {
+                                "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Map_marker.svg/1200px-Map_marker.svg.png",
+                                "latitude": 47.263416,
+                                "longitude": 11.400512,
+                                "width": 50,
+                                "height": 50
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "direction": "bottom",
+            "maps": [
+                {
+                    "direction": "first",
+                    "map": {
+                        "style": "klokantech-basic",
+                        "latitude": 47.263416,
+                        "longitude": 11.400512,
+                        "zoom": 17,
+                        "width": 300,
+                        "height": 100,
+                        "scale": 1,
+                        "markers": [
+                            {
+                                "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Map_marker.svg/1200px-Map_marker.svg.png",
+                                "latitude": 47.263416,
+                                "longitude": 11.400512,
+                                "width": 25,
+                                "height": 25
+                            }
+                        ]
+                    }
+                },
+                {
+                    "direction": "right",
+                    "map": {
+                        "style": "klokantech-basic",
+                        "latitude": 47.263416,
+                        "longitude": 11.400512,
+                        "zoom": 12,
+                        "width": 200,
+                        "height": 100,
+                        "scale": 1,
+                        "markers": [
+                            {
+                                "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Map_marker.svg/1200px-Map_marker.svg.png",
+                                "latitude": 47.263416,
+                                "longitude": 11.400512,
+                                "width": 25,
+                                "height": 25
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    ]
+}
+```
+![multistaticmap response][.exampleimages/multistaticmap.png]
+
+### StaticMap using Templates
+`pokemon.json` file in `Templates` directory:
+```JSON
+{
+    "style": "klokantech-basic",
+    "latitude": {{lat}},
+    "longitude": {{lon}},
+    "zoom": 15,
+    "width": 500,
+    "height": 250,
+    "scale": 1,
+    "markers": [
+        {
+            "url": "https://rdmurl/static/img/pokemon/{{id}}{% if form %}-{{form}}{% endif %}.png",
+            "latitude": {{lat}},
+            "longitude": {{lon}},
+            "width": 50,
+            "height": 50
+        }
+    ]
+}
+```
+`GET https://tileserverurl/staticmap/pokemon?id=201&lat=47.263416&lon=11.400512&form=5`
+![staticmap-template response][.exampleimages/staticmaptemplate.png]

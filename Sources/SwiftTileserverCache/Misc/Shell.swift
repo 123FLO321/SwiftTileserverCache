@@ -14,6 +14,10 @@ internal class Shell {
     internal init (_ args: String...) {
         self.args = args
     }
+
+    internal init (_ args: [String]) {
+        self.args = args
+    }
     
     internal func run(errorPipe: Any?=nil, inputPipe: Any?=nil) -> String? {
         let task = Process()
