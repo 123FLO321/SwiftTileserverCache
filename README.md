@@ -3,10 +3,10 @@
 ## Installing
 
 - Install Docker
-- Crate a new folder to store the yml file in and change into it: `mkdir TileServer && cd TileServer`
+- Create a new folder to store the yml file in and change into it: `mkdir TileServer && cd TileServer`
 - Load the yml: `wget https://raw.githubusercontent.com/123FLO321/SwiftTileserverCache/master/docker-compose.yml`
 - Edit the docker-compose.yml file if you want to change defaults. Default will work fine.
-- Crate a new folder to store TileServer data in and chagne into it: `mkdir TileServer && cd TileServer`
+- Create a new folder to store TileServer data in and chagne into it: `mkdir TileServer && cd TileServer`
 - Get Download command from https://openmaptiles.com/downloads/planet/ for your region.
 - Download the file using wget.
 - Rename file to end in .mbtiles if it got named incorrectly
@@ -30,7 +30,7 @@ Get a list of styles by visiting `/styles`
 Checkout https://tileserver.readthedocs.io for a guide on how to add more styles.
 
 ### StaticMap
-StaticMap route accetps an StaticMap Object JSON Object as POST body:
+StaticMap route accepts an StaticMap Object JSON Object as POST body:
 Example:
 ```
 {
@@ -50,7 +50,7 @@ Example:
 ```
 
 ### MultiStaticMap
-MultiStaticMap route accetps an MultiStaticMap JSON Object as POST Body:
+MultiStaticMap route accepts an MultiStaticMap JSON Object as POST Body:
 Example:
 ```
 {
