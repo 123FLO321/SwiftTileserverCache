@@ -12,10 +12,6 @@ import LoggerAPI
 import PathKit
 import Stencil
 
-#if os(Linux)
-import FoundationNetworking
-#endif
-
 public class WebServer {
     
     private let tileHitRatioLock = NSLock()

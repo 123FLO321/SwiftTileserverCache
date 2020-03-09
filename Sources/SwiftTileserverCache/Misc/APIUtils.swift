@@ -9,6 +9,10 @@ import Foundation
 import LoggerAPI
 import Kitura
 
+#if os(Linux)
+import FoundationNetworking
+#endif
+
 internal class APIUtils {
 
     private init() {}
