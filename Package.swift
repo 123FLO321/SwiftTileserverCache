@@ -4,6 +4,9 @@ import PackageDescription
 
 let package = Package(
     name: "SwiftTileserverCache",
+    platforms: [
+        .macOS(.v10_13) // linux does not yet have runntime availability checks so this doesn't apply to linux yet
+    ],
     products: [
         .executable(
             name: "SwiftTileserverCacheApp",

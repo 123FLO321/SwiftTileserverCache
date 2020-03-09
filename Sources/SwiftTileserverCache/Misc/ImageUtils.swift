@@ -47,9 +47,15 @@ internal class ImageUtils {
             "-composite",
             destinationPath
         )
-        let error = shell.runError() ?? ""
-        guard error == "" else {
-            Log.error("Failed to run magick: \(error)")
+        let errorString: String
+        do {
+            errorString = try shell.runError() ?? ""
+        } catch {
+            Log.error("Failed to run magick command: \(error)")
+            throw RequestError(rawValue: 500, reason: "ImageMagick Error")
+        }
+        guard errorString == "" else {
+            Log.error("Failed to run magick: \(errorString)")
             throw RequestError(rawValue: 500, reason: "ImageMagick Error")
         }
 
@@ -79,9 +85,15 @@ internal class ImageUtils {
         }
         args.append(destinationPath)
         let shell = Shell(args)
-        let error = shell.runError() ?? ""
-        guard error == "" else {
-            Log.error("Failed to run magick: \(error)")
+        let errorString: String
+        do {
+            errorString = try shell.runError() ?? ""
+        } catch {
+            Log.error("Failed to run magick command: \(error)")
+            throw RequestError(rawValue: 500, reason: "ImageMagick Error")
+        }
+        guard errorString == "" else {
+            Log.error("Failed to run magick: \(errorString)")
             throw RequestError(rawValue: 500, reason: "ImageMagick Error")
         }
     }
@@ -121,9 +133,15 @@ internal class ImageUtils {
             "-draw", "polygon \(polygonPath)",
             destinationPath
         )
-        let error = shell.runError() ?? ""
-        guard error == "" else {
-            Log.error("Failed to run magick: \(error)")
+        let errorString: String
+        do {
+            errorString = try shell.runError() ?? ""
+        } catch {
+            Log.error("Failed to run magick command: \(error)")
+            throw RequestError(rawValue: 500, reason: "ImageMagick Error")
+        }
+        guard errorString == "" else {
+            Log.error("Failed to run magick: \(errorString)")
             throw RequestError(rawValue: 500, reason: "ImageMagick Error")
         }
 
