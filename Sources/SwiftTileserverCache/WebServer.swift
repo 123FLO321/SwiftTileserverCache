@@ -234,9 +234,9 @@ public class WebServer {
         guard let scale = UInt8(request.queryParameters["scale"] ?? "") else {
             return try response.send("Missing value for \"scale\"").status(.badRequest).end()
         }
-        let format = request.parameters["format"]
-        let bearing = Double(request.parameters["bearing"] ?? "")
-        let pitch = Double(request.parameters["pitch"] ?? "")
+        let format = request.queryParameters["format"]
+        let bearing = Double(request.queryParameters["bearing"] ?? "")
+        let pitch = Double(request.queryParameters["pitch"] ?? "")
 
         let polygons: [Polygon]?
         if let polygonsJSONString = request.queryParameters["polygons"]?.removingPercentEncoding ?? request.queryParameters["polygons"],
