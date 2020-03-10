@@ -19,7 +19,7 @@
     - `GET tile/{style}/{z}/{x}/{y}/{scale}/{format}`
 - StaticMap: 
     - `POST /staticmap` (StaticMap Object in JSON Format as POST body)
-    - `GET /staticmap` (SaticMap Object in URL Parameters. Markers and Polygons require POST)
+    - `GET /staticmap` (SaticMap Object in URL Parameters. Markers and Polygons need to be URL-encoded)
     - `GET /staticmap/:template` (Template Enviroment parsed from URL Parameters. Parameters ending in `json` will be parsed as json. Multiple instances of same Parameter will be parsed as array)
 - MutliStaticMap:
     - `POST /multistaticmap` (MultiStaticMap Object in JSON Format as POST body)
