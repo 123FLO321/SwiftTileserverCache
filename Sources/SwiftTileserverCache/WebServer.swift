@@ -199,6 +199,10 @@ public class WebServer {
             }
             let staticMap = try JSONDecoder().decode(StaticMap.self, from: data)
             fileName = try generateStaticMap(staticMap: staticMap)
+        } catch let error as TemplateDoesNotExist {
+            return try response.send(error.description).status(.badRequest).end()
+        } catch let error as TemplateSyntaxError {
+            return try response.send(error.reason).status(.badRequest).end()
         } catch let error as DecodingError {
             return try response.send(error.humanReadableDescription).status(.badRequest).end()
         } catch let error as RequestError {
@@ -312,6 +316,10 @@ public class WebServer {
             }
             let multiStaticMap = try JSONDecoder().decode(MultiStaticMap.self, from: data)
             fileName = try generateMultiStaticMap(multiStaticMap: multiStaticMap)
+        } catch let error as TemplateDoesNotExist {
+            return try response.send(error.description).status(.badRequest).end()
+        } catch let error as TemplateSyntaxError {
+            return try response.send(error.reason).status(.badRequest).end()
         } catch let error as DecodingError {
             return try response.send(error.humanReadableDescription).status(.badRequest).end()
         } catch let error as RequestError {
