@@ -11,6 +11,7 @@ import FileKit
 import LoggerAPI
 import PathKit
 import Stencil
+import Cryptor
 
 public class WebServer {
     
@@ -461,12 +462,13 @@ public class WebServer {
                         Log.info("Building Static: \(staticMap)")
 
                         if let marker = drawable as? Marker {
-                            guard let markerURLEncoded = marker.url.data(using: .utf8)?.base64EncodedString() else {
-                                Log.error("Failed to base 64 encode marker url")
+                            guard let markerHashedData = Digest(using: .md5).update(string: marker.url)?.final() else {
+                                Log.error("Failed to hash marker url")
                                 throw RequestError.internalServerError
                             }
+                            let markerHashed = Data(markerHashedData).base64EncodedString().replacingOccurrences(of: "/", with: "_")
                             let markerFormat = marker.url.components(separatedBy: ".").last ?? "png"
-                            let markerFileName = "\(FileKit.projectFolder)/Cache/Marker/\(markerURLEncoded).\(markerFormat)"
+                            let markerFileName = "\(FileKit.projectFolder)/Cache/Marker/\(markerHashed).\(markerFormat)"
                             if !fileManager.fileExists(atPath: markerFileName) {
                                 Log.info("Loading Marker: \(marker.url)")
                                 do {
