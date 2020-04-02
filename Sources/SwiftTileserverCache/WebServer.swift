@@ -440,23 +440,23 @@ public class WebServer {
             if staticMapC.markers == nil {
                 staticMapC.markers = []
             }
-            let fileNameWithMarker = "\(FileKit.projectFolder)/Cache/StaticWithMarkers/\(staticMap.uniqueHash)).\(staticMapC.format ?? "png")"
+            let fileNameWithMarker = "\(FileKit.projectFolder)/Cache/StaticWithMarkers/\(staticMapC.uniqueHash)).\(staticMapC.format ?? "png")"
             if !fileManager.fileExists(atPath: fileNameWithMarker) {
                 var fileNameWithMarkerFull = fileName
                 var addedPolygons = [Polygon]()
                 var addedMarkers = [Marker]()
                 for drawable in drawables {
-                    var staticMapCopy = staticMap
-                    staticMapCopy.markers = addedMarkers
-                    staticMapCopy.polygons = addedPolygons
-
                     if let marker = drawable as? Marker {
                         addedMarkers.append(marker)
                     } else if let polygon = drawable as? Polygon {
                         addedPolygons.append(polygon)
                     }
 
-                    let fileNameWithMarker = "\(FileKit.projectFolder)/Cache/StaticWithMarkers/\(staticMap.uniqueHash)).\(staticMapCopy.format ?? "png")"
+                    var staticMapCopy = staticMap
+                    staticMapCopy.markers = addedMarkers
+                    staticMapCopy.polygons = addedPolygons
+
+                    let fileNameWithMarker = "\(FileKit.projectFolder)/Cache/StaticWithMarkers/\(staticMapCopy.uniqueHash)).\(staticMapCopy.format ?? "png")"
 
                     if !fileManager.fileExists(atPath: fileNameWithMarker) {
                         Log.info("Building Static: \(staticMap)")
