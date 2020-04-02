@@ -15,7 +15,7 @@ public protocol PersistentHashable {
 extension PersistentHashable where Self: Codable {
     public var uniqueHash: String {
         let encoder = JSONEncoder()
-        encoder.outputFormatting = .prettyPrinted
+        encoder.outputFormatting = .sortedKeys
         let json = try! encoder.encode(self)
         return Data(Digest(using: .md5).update(data: json)!.final()).base64EncodedString().replacingOccurrences(of: "/", with: "_")
     }
