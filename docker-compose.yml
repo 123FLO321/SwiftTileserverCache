@@ -14,6 +14,7 @@ services:
     tty: true
     volumes:
       - ./Cache:/SwiftTileserverCache/Cache
+      - ./Templates:/SwiftTileserverCache/Templates
     environment:
       TILE_SERVER_URL: http://tileserver # Leave this unless tileserver is external!
       TILE_CACHE_MAX_AGE_MINUTES: 10080 # 7 Days
@@ -22,6 +23,8 @@ services:
       STATIC_CACHE_DELAY_SECONDS: 3600 # 1 Hour
       STATIC_MARKER_CACHE_MAX_AGE_MINUTES: 60 # 1 Hour
       STATIC_MARKER_CACHE_DELAY_SECONDS: 900 # 15 Minutes
+      STATIC_MUTLI_CACHE_MAX_AGE_MINUTES: 60 # 1 Hour
+      STATIC_MULTI_CACHE_DELAY_SECONDS: 900 # 15 Minutes
       MARKER_CACHE_MAX_AGE_MINUTES: 1440 # 1 Day
       MARKER_CACHE_DELAY_SECONDS: 3600 # 1 Hour
       LOGGING_LEVEL: verbose # debug, verbose or info

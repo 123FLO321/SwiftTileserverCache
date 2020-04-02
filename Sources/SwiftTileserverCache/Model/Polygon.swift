@@ -13,10 +13,6 @@ public struct Polygon: Codable, Hashable, Drawable {
     public var strokeWidth: UInt8
     public var path: [[Double]]
     
-    public var hashString: String {
-        return "P\(hashValue)"
-    }
-    
     enum CodingKeys: String, CodingKey {
         case fillColor = "fill_color", strokeColor = "stroke_color", path, strokeWidth = "stroke_width"
     }

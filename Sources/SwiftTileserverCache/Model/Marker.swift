@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Cryptor
 
 public struct Marker: Codable, Hashable, Drawable {
     public var url: String
@@ -13,15 +14,10 @@ public struct Marker: Codable, Hashable, Drawable {
     public var width: UInt16
     public var latitude: Double
     public var longitude: Double
-    public var xOffset: Int16=0
-    public var yOffset: Int16=0
-    
-    public var hashString: String {
-        return "M\(hashValue)"
-    }
-    
+    public var xOffset: Int16?
+    public var yOffset: Int16?
+        
     enum CodingKeys: String, CodingKey {
         case url, height, width, latitude, longitude, xOffset = "x_offset", yOffset = "y_offset"
     }
-    
 }

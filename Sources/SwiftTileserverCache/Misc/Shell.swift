@@ -14,10 +14,14 @@ internal class Shell {
     internal init (_ args: String...) {
         self.args = args
     }
+
+    internal init (_ args: [String]) {
+        self.args = args
+    }
     
-    internal func run(errorPipe: Any?=nil, inputPipe: Any?=nil) -> String? {
+    internal func run(errorPipe: Any?=nil, inputPipe: Any?=nil) throws -> String? {
         let task = Process()
-        task.launchPath = "/usr/bin/env"
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         task.arguments = args
         let pipe = Pipe()
         if errorPipe != nil {
@@ -27,15 +31,15 @@ internal class Shell {
             task.standardInput = inputPipe
         }
         task.standardOutput = pipe
-        task.launch()
+        try task.run()
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         task.waitUntilExit()
         return String(data: data, encoding: String.Encoding.utf8)
     }
     
-    internal func runError(standartPipe: Any?=nil, inputPipe: Any?=nil) -> String? {
+    internal func runError(standartPipe: Any?=nil, inputPipe: Any?=nil) throws -> String? {
         let task = Process()
-        task.launchPath = "/usr/bin/env"
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         task.arguments = args
         let pipe = Pipe()
         if standartPipe != nil {
@@ -45,7 +49,7 @@ internal class Shell {
             task.standardInput = inputPipe
         }
         task.standardError = pipe
-        task.launch()
+        try task.run()
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         task.waitUntilExit()
         return String(data: data, encoding: String.Encoding.utf8)
