@@ -14,7 +14,7 @@ internal class ImageUtils {
 
     private init() {}
 
-    internal static func combineImages(staticPath: String, markerPath: String, destinationPath: String, marker: Marker, scale: UInt8, centerLat: Double, centerLon: Double, zoom: UInt8) throws {
+    internal static func combineImages(staticPath: String, markerPath: String, destinationPath: String, marker: Marker, scale: UInt8, centerLat: Double, centerLon: Double, zoom: Double) throws {
 
         let realOffset = getRealOffset(
             at: Coordinate(latitude: marker.latitude, longitude: marker.longitude) ,
@@ -98,7 +98,7 @@ internal class ImageUtils {
         }
     }
 
-    internal static func drawPolygon(staticPath: String, destinationPath: String, polygon: Polygon, scale: UInt8, centerLat: Double, centerLon: Double, zoom: UInt8, width: UInt16, height: UInt16) throws {
+    internal static func drawPolygon(staticPath: String, destinationPath: String, polygon: Polygon, scale: UInt8, centerLat: Double, centerLon: Double, zoom: Double, width: UInt16, height: UInt16) throws {
 
         var points = [(x: Int, y: Int)]()
 
@@ -147,7 +147,7 @@ internal class ImageUtils {
 
     }
 
-    private static func getRealOffset(at: Coordinate, relativeTo center: Coordinate, zoom: UInt8, scale: UInt8, extraX: Int16, extraY: Int16) -> (x: Int, y: Int) {
+    private static func getRealOffset(at: Coordinate, relativeTo center: Coordinate, zoom: Double, scale: UInt8, extraX: Int16, extraY: Int16) -> (x: Int, y: Int) {
         let realOffsetX: Int
         let realOffsetY: Int
         if center.latitude == at.latitude && center.longitude == at.longitude {

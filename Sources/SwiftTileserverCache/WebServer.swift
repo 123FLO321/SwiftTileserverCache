@@ -227,7 +227,7 @@ public class WebServer {
         guard let longitude = Double(request.queryParameters["longitude"] ?? "") else {
             return try response.send("Missing value for \"longitude\"").status(.badRequest).end()
         }
-        guard let zoom = UInt8(request.queryParameters["zoom"] ?? "") else {
+        guard let zoom = Double(request.queryParameters["zoom"] ?? "") else {
             return try response.send("Missing value for \"zoom\"").status(.badRequest).end()
         }
         guard let width = UInt16(request.queryParameters["width"] ?? "") else {
@@ -358,7 +358,7 @@ public class WebServer {
             let style = request.parameters["style"],
             let lat = Double(request.parameters["lat"] ?? ""),
             let lon = Double(request.parameters["lon"] ?? ""),
-            let zoom = UInt8(request.parameters["zoom"] ?? ""),
+            let zoom = Double(request.parameters["zoom"] ?? ""),
             let width = UInt16(request.parameters["width"] ?? ""),
             let height = UInt16(request.parameters["height"] ?? ""),
             let scale = UInt8(request.parameters["scale"] ?? ""),

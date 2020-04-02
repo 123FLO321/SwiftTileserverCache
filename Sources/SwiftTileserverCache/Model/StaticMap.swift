@@ -12,7 +12,7 @@ public struct StaticMap: Codable, Hashable, PersistentHashable {
     public var style: String
     public var latitude: Double
     public var longitude: Double
-    public var zoom: UInt8
+    public var zoom: Double
     public var width: UInt16
     public var height: UInt16
     public var scale: UInt8
