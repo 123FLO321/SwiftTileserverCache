@@ -501,7 +501,7 @@ public class WebServer {
                     fileNameWithMarkerFull = fileNameWithMarker
                 }
             } else {
-                touch(fileName: fileName)
+                touch(fileName: fileNameWithMarker)
                 staticMarkerHitRatioLock.lock()
                 staticMarkerHitRatio[staticMap.style] = (hit: (staticMarkerHitRatio[staticMap.style]?.hit ?? 0) + 1, miss: staticMarkerHitRatio[staticMap.style]?.miss ?? 0)
                 staticMarkerHitRatioLock.unlock()
