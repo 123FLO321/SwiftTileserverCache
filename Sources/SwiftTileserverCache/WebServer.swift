@@ -565,10 +565,20 @@ public class WebServer {
     }
 
     private func touch(fileManager: FileManager, fileName: String) {
-        do {
-            try fileManager.setAttributes([.modificationDate : Date()], ofItemAtPath: fileName)
-        } catch {
-            Log.warning("Failed to touch \(fileName): \(error)")
+        DispatchQueue(label: "Touch-\(UUID().uuidString)").async {
+            do {
+                #if os(macOS)
+                try fileManager.setAttributes([.modificationDate : Date()], ofItemAtPath: fileName)
+                #else
+                let shell = Shell("/usr/bin/touch", fileName)
+                let error = try shell.runError()
+                if (error ?? "") != "" {
+                    Log.warning("Failed to touch \(fileName): \(error!)")
+                }
+                #endif
+            } catch {
+                Log.warning("Failed to touch \(fileName): \(error)")
+            }
         }
     }
 
