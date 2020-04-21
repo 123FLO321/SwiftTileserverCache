@@ -45,7 +45,7 @@ Example:
   "bearing": double?,
   "pitch": double?,
   "markers": [Marker]?,
-  "geofences": [Geofence]?
+  "polygons": [Geofence]?
 }
 ```
 
@@ -100,8 +100,8 @@ Example:
 }
 ```
 
-### Geofence
-Geofence JSON used in StaticMap:
+### Polygon
+Polygon JSON used in StaticMap:
 Example:
 ```
 {
