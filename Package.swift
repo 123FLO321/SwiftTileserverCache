@@ -17,12 +17,13 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/IBM-Swift/Kitura", .upToNextMinor(from: "2.7.0")),
-        .package(url: "https://github.com/IBM-Swift/FileKit.git", from: "0.0.2"),
+        .package(url: "https://github.com/123FLO321/FileKit.git", from: "0.0.3"),
         .package(url: "https://github.com/IBM-Swift/LoggerAPI", .upToNextMinor(from: "1.9.0")),
         .package(url: "https://github.com/IBM-Swift/HeliumLogger", .upToNextMinor(from: "1.8.1")),
         .package(url: "https://github.com/IBM-Swift/BlueCryptor", .upToNextMinor(from: "1.0.0")),
         .package(url: "https://github.com/ianpartridge/swift-backtrace", .upToNextMinor(from: "1.1.1")),
         .package(url: "https://github.com/stencilproject/Stencil", .upToNextMinor(from: "0.13.0")),
+        .package(url: "https://github.com/JohnSundell/ShellOut", .upToNextMinor(from: "2.3.0"))
     ],
     targets: [
         .target(
@@ -32,7 +33,8 @@ let package = Package(
                 "FileKit",
                 "LoggerAPI",
                 "Cryptor",
-                "Stencil"
+                "Stencil",
+                "ShellOut"
             ]
         ),
         .target(
@@ -40,7 +42,7 @@ let package = Package(
             dependencies: [
                 "SwiftTileserverCache",
                 "HeliumLogger",
-		"Backtrace"
+                "Backtrace"
             ]
         ),
         .testTarget(

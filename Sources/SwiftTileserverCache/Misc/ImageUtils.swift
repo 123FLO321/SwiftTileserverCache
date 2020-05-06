@@ -9,6 +9,7 @@ import Foundation
 import FileKit
 import LoggerAPI
 import Kitura
+import ShellOut
 
 internal class ImageUtils {
 
@@ -38,35 +39,26 @@ internal class ImageUtils {
             realOffsetYPrefix = ""
         }
 
-        let shell = Shell(
-            "/usr/local/bin/convert",
-            staticPath,
-            "(", markerPath, "-resize", "\(marker.width * UInt16(scale))x\(marker.height * UInt16(scale))", ")",
-            "-gravity", "Center",
-            "-geometry", "\(realOffsetXPrefix)\(realOffset.x)\(realOffsetYPrefix)\(realOffset.y)",
-            "-composite",
-            destinationPath
-        )
-        let errorString: String
         do {
-            errorString = try shell.runError() ?? ""
+            try shellOut(to: "/usr/local/bin/convert", arguments: [
+                staticPath,
+                "\\(", markerPath, "-resize", "\(marker.width * UInt16(scale))x\(marker.height * UInt16(scale))", "\\)",
+                "-gravity", "Center",
+                "-geometry", "\(realOffsetXPrefix)\(realOffset.x)\(realOffsetYPrefix)\(realOffset.y)",
+                "-composite",
+                destinationPath
+            ])
         } catch {
-            Log.error("Failed to run magick command: \(error)")
-            throw RequestError(rawValue: 500, reason: "ImageMagick Error")
-        }
-        guard errorString == "" else {
-            Log.error("Failed to run magick: \(errorString)")
+            Log.error("Failed to run magick: \(error)")
             throw RequestError(rawValue: 500, reason: "ImageMagick Error")
         }
 
     }
 
     internal static func combineImages(grids: [(firstPath: String, direction: CombineDirection, images: [(direction: CombineDirection, path: String)])], destinationPath: String) throws {
-        var args = [
-            "/usr/local/bin/convert"
-        ]
+        var args = [String]()
         for grid in grids {
-            args.append("(")
+            args.append("\\(")
             args.append(grid.firstPath)
             for image in grid.images {
                 args.append(image.path)
@@ -76,7 +68,7 @@ internal class ImageUtils {
                     args.append("+append")
                 }
             }
-            args.append(")")
+            args.append("\\)")
             if grid.direction == .bottom {
                 args.append("-append")
             } else {
@@ -84,16 +76,11 @@ internal class ImageUtils {
             }
         }
         args.append(destinationPath)
-        let shell = Shell(args)
-        let errorString: String
+
         do {
-            errorString = try shell.runError() ?? ""
+            try shellOut(to: "/usr/local/bin/convert", arguments: args)
         } catch {
-            Log.error("Failed to run magick command: \(error)")
-            throw RequestError(rawValue: 500, reason: "ImageMagick Error")
-        }
-        guard errorString == "" else {
-            Log.error("Failed to run magick: \(errorString)")
+            Log.error("Failed to run magick: \(error)")
             throw RequestError(rawValue: 500, reason: "ImageMagick Error")
         }
     }
@@ -123,25 +110,18 @@ internal class ImageUtils {
         }
         polygonPath.removeLast()
 
-        let shell = Shell(
-            "/usr/local/bin/convert",
-            staticPath,
-            "-strokewidth", "\(polygon.strokeWidth)",
-            "-fill", polygon.fillColor,
-            "-stroke", polygon.strokeColor,
-            "-gravity", "Center",
-            "-draw", "polygon \(polygonPath)",
-            destinationPath
-        )
-        let errorString: String
         do {
-            errorString = try shell.runError() ?? ""
+            try shellOut(to: "/usr/local/bin/convert", arguments: [
+                staticPath,
+                "-strokewidth", "\(polygon.strokeWidth)",
+                "-fill", polygon.fillColor,
+                "-stroke", polygon.strokeColor,
+                "-gravity", "Center",
+                "-draw", "polygon \(polygonPath)",
+                destinationPath
+            ])
         } catch {
-            Log.error("Failed to run magick command: \(error)")
-            throw RequestError(rawValue: 500, reason: "ImageMagick Error")
-        }
-        guard errorString == "" else {
-            Log.error("Failed to run magick: \(errorString)")
+            Log.error("Failed to run magick: \(error)")
             throw RequestError(rawValue: 500, reason: "ImageMagick Error")
         }
 

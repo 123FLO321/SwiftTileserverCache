@@ -14,6 +14,8 @@ import Stencil
 import Cryptor
 
 public class WebServer {
+
+    private let fileToucher = FileToucher()
     
     private let tileHitRatioLock = NSLock()
     private var tileHitRatio = [String: (hit: UInt64, miss: UInt64)]()
@@ -167,7 +169,7 @@ public class WebServer {
             tileHitRatio[style] = (hit: tileHitRatio[style]?.hit ?? 0, miss: (tileHitRatio[style]?.miss ?? 0) + 1)
             tileHitRatioLock.unlock()
         } else {
-            touch(fileManager: fileManager, fileName: fileName)
+            fileToucher.touch(fileName: fileName)
             tileHitRatioLock.lock()
             tileHitRatio[style] = (hit: (tileHitRatio[style]?.hit ?? 0) + 1, miss: tileHitRatio[style]?.miss ?? 0)
             tileHitRatioLock.unlock()
@@ -418,7 +420,7 @@ public class WebServer {
             staticHitRatio[staticMap.style] = (hit: staticHitRatio[staticMap.style]?.hit ?? 0, miss: (staticHitRatio[staticMap.style]?.miss ?? 0) + 1)
             staticHitRatioLock.unlock()
         } else {
-            touch(fileManager: fileManager, fileName: fileName)
+            fileToucher.touch(fileName: fileName)
             staticHitRatioLock.lock()
             staticHitRatio[staticMap.style] = (hit: (staticHitRatio[staticMap.style]?.hit ?? 0) + 1, miss: staticHitRatio[staticMap.style]?.miss ?? 0)
             staticHitRatioLock.unlock()
@@ -440,7 +442,7 @@ public class WebServer {
             if staticMapC.markers == nil {
                 staticMapC.markers = []
             }
-            let fileNameWithMarker = "\(FileKit.projectFolder)/Cache/StaticWithMarkers/\(staticMapC.uniqueHash)).\(staticMapC.format ?? "png")"
+            let fileNameWithMarker = "\(FileKit.projectFolder)/Cache/StaticWithMarkers/\(staticMapC.uniqueHash).\(staticMapC.format ?? "png")"
             if !fileManager.fileExists(atPath: fileNameWithMarker) {
                 var fileNameWithMarkerFull = fileName
                 var addedPolygons = [Polygon]()
@@ -456,7 +458,7 @@ public class WebServer {
                     staticMapCopy.markers = addedMarkers
                     staticMapCopy.polygons = addedPolygons
 
-                    let fileNameWithMarker = "\(FileKit.projectFolder)/Cache/StaticWithMarkers/\(staticMapCopy.uniqueHash)).\(staticMapCopy.format ?? "png")"
+                    let fileNameWithMarker = "\(FileKit.projectFolder)/Cache/StaticWithMarkers/\(staticMapCopy.uniqueHash).\(staticMapCopy.format ?? "png")"
 
                     if !fileManager.fileExists(atPath: fileNameWithMarker) {
                         Log.info("Building Static: \(staticMap)")
@@ -480,7 +482,7 @@ public class WebServer {
                                 markerHitRatio.miss += 1
                                 markerHitRatioLock.unlock()
                             } else {
-                                touch(fileManager: fileManager, fileName: fileName)
+                                fileToucher.touch(fileName: fileName)
                                 markerHitRatioLock.lock()
                                 markerHitRatio.hit += 1
                                 markerHitRatioLock.unlock()
@@ -493,7 +495,7 @@ public class WebServer {
                         staticMarkerHitRatio[staticMap.style] = (hit: staticMarkerHitRatio[staticMap.style]?.hit ?? 0, miss: (staticMarkerHitRatio[staticMap.style]?.miss ?? 0) + 1)
                         staticMarkerHitRatioLock.unlock()
                     } else {
-                        touch(fileManager: fileManager, fileName: fileName)
+                        fileToucher.touch(fileName: fileName)
                         staticMarkerHitRatioLock.lock()
                         staticMarkerHitRatio[staticMap.style] = (hit: (staticMarkerHitRatio[staticMap.style]?.hit ?? 0) + 1, miss: staticMarkerHitRatio[staticMap.style]?.miss ?? 0)
                         staticMarkerHitRatioLock.unlock()
@@ -501,7 +503,7 @@ public class WebServer {
                     fileNameWithMarkerFull = fileNameWithMarker
                 }
             } else {
-                touch(fileManager: fileManager, fileName: fileNameWithMarker)
+                fileToucher.touch(fileName: fileNameWithMarker)
                 staticMarkerHitRatioLock.lock()
                 staticMarkerHitRatio[staticMap.style] = (hit: (staticMarkerHitRatio[staticMap.style]?.hit ?? 0) + 1, miss: staticMarkerHitRatio[staticMap.style]?.miss ?? 0)
                 staticMarkerHitRatioLock.unlock()
@@ -561,24 +563,6 @@ public class WebServer {
         } else {
             Log.info("Serving MutliStatic: \(multiStaticMap)")
             return fileNameWithMarker
-        }
-    }
-
-    private func touch(fileManager: FileManager, fileName: String) {
-        DispatchQueue(label: "Touch-\(UUID().uuidString)").async {
-            do {
-                #if os(macOS)
-                try fileManager.setAttributes([.modificationDate : Date()], ofItemAtPath: fileName)
-                #else
-                let shell = Shell("/usr/bin/touch", fileName)
-                let error = try shell.runError()
-                if (error ?? "") != "" {
-                    Log.warning("Failed to touch \(fileName): \(error!)")
-                }
-                #endif
-            } catch {
-                Log.warning("Failed to touch \(fileName): \(error)")
-            }
         }
     }
 
