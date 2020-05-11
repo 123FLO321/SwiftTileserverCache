@@ -29,7 +29,7 @@ WORKDIR /SwiftTileserverCache
 
 RUN apt-get -qq update && export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true && \
     apt-get install -y \
-    libatomic1 libxml2 libz-dev libbsd0 tzdata imagemagick \
+    libatomic1 libxml2 libz-dev libbsd0 tzdata libicu60 libcurl4 imagemagick \
     && rm -r /var/lib/apt/lists/*
 
 # Copy build artifacts
