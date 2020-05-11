@@ -147,7 +147,7 @@ public class ImageUtils {
         
         return request.application.threadPool.runIfActive(eventLoop: request.eventLoop) {
             do {
-                try shellOut(to: "/usr/local/bin/convert", arguments: args)
+                try shellOut(to: imagemagickConvertCommand, arguments: args)
             } catch {
                 request.application.logger.error("Failed to run magick: \(error)")
                 throw Abort(.internalServerError, reason: "ImageMagick Error: \(error)")

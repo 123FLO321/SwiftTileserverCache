@@ -20,16 +20,16 @@ RUN swift build \
 # Run image
 # ================================
 FROM vapor/ubuntu:18.04
-WORKDIR /run
+WORKDIR /SwiftTileserverCache
 
 # Install imagemagick
 RUN apt-get -y update && apt-get install -y imagemagick
 # Copy build artifacts
-COPY --from=build /build/.build/release /run
+COPY --from=build /build/.build/release /SwiftTileserverCache
 # Copy Swift runtime libraries
 COPY --from=build /usr/lib/swift/ /usr/lib/swift/
 # Copy Resources
-COPY --from=build /build/Resources /run/Resources
+COPY --from=build /build/Resources /SwiftTileserverCache/Resources
 
 
 ENTRYPOINT ["./SwiftTileserverCacheApp"]
