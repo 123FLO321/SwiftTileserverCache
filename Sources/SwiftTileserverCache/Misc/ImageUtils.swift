@@ -100,9 +100,12 @@ public class ImageUtils {
                     markerArguments +
                     [path
                     ])
+            } catch let error as ShellOutError {
+                request.application.logger.error("Failed to run magick: \(error.message)")
+                throw Abort(.internalServerError, reason: "ImageMagick Error: \(error.message)")
             } catch {
                 request.application.logger.error("Failed to run magick: \(error)")
-                throw Abort(.internalServerError, reason: "ImageMagick Error: \(error)")
+                throw Abort(.internalServerError, reason: "ImageMagick Error")
             }
         }
         
@@ -148,9 +151,12 @@ public class ImageUtils {
         return request.application.threadPool.runIfActive(eventLoop: request.eventLoop) {
             do {
                 try shellOut(to: imagemagickConvertCommand, arguments: args)
+            } catch let error as ShellOutError {
+                request.application.logger.error("Failed to run magick: \(error.message)")
+                throw Abort(.internalServerError, reason: "ImageMagick Error: \(error.message)")
             } catch {
                 request.application.logger.error("Failed to run magick: \(error)")
-                throw Abort(.internalServerError, reason: "ImageMagick Error: \(error)")
+                throw Abort(.internalServerError, reason: "ImageMagick Error")
             }
         }
     }
