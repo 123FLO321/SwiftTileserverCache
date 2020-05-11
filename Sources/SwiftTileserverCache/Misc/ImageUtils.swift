@@ -99,7 +99,7 @@ public class ImageUtils {
                     polygonArguments +
                     markerArguments +
                     [path
-                    ])
+                ])
             } catch let error as ShellOutError {
                 request.application.logger.error("Failed to run magick: \(error.message)")
                 throw Abort(.internalServerError, reason: "ImageMagick Error: \(error.message)")
@@ -182,5 +182,5 @@ public class ImageUtils {
         }
         return (realOffsetX + (Int(extraX) * Int(scale)), realOffsetY + (Int(extraY) * Int(scale)))
     }
-    
+
 }

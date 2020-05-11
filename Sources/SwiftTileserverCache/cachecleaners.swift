@@ -8,7 +8,6 @@ func cachecleaners(_ app: Application) throws {
     try? FileManager().createDirectory(atPath: "Cache/StaticMulti", withIntermediateDirectories: false)
     try? FileManager().createDirectory(atPath: "Cache/Marker", withIntermediateDirectories: false)
 
-
     if let maxAgeMinutes = UInt32(Environment.get("TILE_CACHE_MAX_AGE_MINUTES") ?? "") {
         let clearDelaySeconds = UInt32(Environment.get("TILE_CACHE_DELAY_SECONDS") ?? "") ?? 900
         app.logger.notice("Starting CacheCleaner for Tiles with maxAgeMinutes: \(maxAgeMinutes) and clearDelaySeconds: \(clearDelaySeconds)")
