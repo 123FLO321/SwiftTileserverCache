@@ -6,17 +6,20 @@
 //
 
 import Foundation
-import LoggerAPI
+import Vapor
 import ShellOut
 
 public class FileToucher {
 
+    private let logger: Logger
     private let fileManager = FileManager()
     private let queueLock = NSLock()
     private var queue = [String]()
 
     public init() {
-        let thread = DispatchQueue(label: "FileToucher-\(UUID().uuidString)")
+        let uuidString = UUID().uuidString
+        self.logger = Logger(label: "FileToucher-\(uuidString)")
+        let thread = DispatchQueue(label: "FileToucher-\(uuidString)")
         thread.async {
             while true {
                 self.runOnce()
@@ -30,8 +33,9 @@ public class FileToucher {
         if !queue.isEmpty {
             do {
                 try shellOut(to: "/usr/bin/touch", arguments: queue)
+                logger.debug("Touched \(queue.count) Files")
             } catch {
-                Log.warning("Failed to touch files: \(error)")
+                logger.warning("Failed to touch files: \(error)")
             }
             queue = []
         }

@@ -6,24 +6,26 @@
 //
 
 import Foundation
-import LoggerAPI
+import Vapor
 
 public class CacheCleaner {
-    
+
+    private let logger: Logger
     private let folder: URL
     private let maxAgeMinutes: UInt32
     private let fileManager = FileManager()
     
-    public init(folder: URL, maxAgeMinutes: UInt32, clearDelaySeconds: UInt32=60) {
-        self.folder = folder
+    public init(folder: String, maxAgeMinutes: UInt32, clearDelaySeconds: UInt32=60) {
+        self.folder = URL(fileURLWithPath: folder)
         self.maxAgeMinutes = maxAgeMinutes
-        let thread = DispatchQueue(label: "CacheCleaner-\(folder.absoluteString)")
+        self.logger = Logger(label: "CacheCleaner-\(folder)")
+        let thread = DispatchQueue(label: "CacheCleaner-\(folder)")
         thread.async {
             while true {
                 do {
                     try self.runOnce()
                 } catch {
-                    Log.error("Failed to run CacheCleaner")
+                    self.logger.error("Failed to run CacheCleaner")
                 }
                 sleep(clearDelaySeconds)
             }
@@ -36,16 +38,16 @@ public class CacheCleaner {
         for file in files {
             do {
                 if let date = try file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate,
-                   now.timeIntervalSince(date) >= Double(maxAgeMinutes * 60) {
-                    Log.info("Removing file \(file.lastPathComponent) (Too old)")
+                    now.timeIntervalSince(date) >= Double(maxAgeMinutes * 60) {
+                    logger.notice("Removing file \(file.lastPathComponent) (Too old)")
                     do {
                         try fileManager.removeItem(at: file)
                     } catch {
-                        Log.warning("Failed to delete \(file.lastPathComponent): \(error)")
+                        logger.warning("Failed to delete \(file.lastPathComponent): \(error)")
                     }
                 }
             } catch {
-                Log.warning("Failed to read contentModificationDate of \(file.lastPathComponent): \(error)")
+                logger.warning("Failed to read contentModificationDate of \(file.lastPathComponent): \(error)")
             }
         }
     }

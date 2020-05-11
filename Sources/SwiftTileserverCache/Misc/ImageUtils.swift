@@ -6,56 +6,124 @@
 //
 
 import Foundation
-import FileKit
-import LoggerAPI
-import Kitura
+import Vapor
 import ShellOut
 
-internal class ImageUtils {
-
+public class ImageUtils {
+    
     private init() {}
-
-    internal static func combineImages(staticPath: String, markerPath: String, destinationPath: String, marker: Marker, scale: UInt8, centerLat: Double, centerLon: Double, zoom: Double) throws {
-
-        let realOffset = getRealOffset(
-            at: Coordinate(latitude: marker.latitude, longitude: marker.longitude) ,
-            relativeTo: Coordinate(latitude: centerLat, longitude: centerLon),
-            zoom: zoom,
-            scale: scale,
-            extraX: marker.xOffset ?? 0,
-            extraY: marker.yOffset ?? 0
-        )
-
-        let realOffsetXPrefix: String
-        if realOffset.x >= 0 {
-            realOffsetXPrefix = "+"
-        } else {
-            realOffsetXPrefix = ""
+    
+    #if os(macOS)
+    private static let imagemagickConvertCommand = "/usr/local/bin/convert"
+    #else
+    private static let imagemagickConvertCommand = "/usr/bin/convert"
+    #endif
+    
+    // MARK: - Generation
+    
+    public static func generateStaticMap(request: Request, staticMap: StaticMap, basePath: String, path: String) -> EventLoopFuture<Void> {
+        var polygonArguments = [String]()
+        for polygon in staticMap.polygons ?? [] {
+            var points = [(x: Int, y: Int)]()
+            
+            for coord in polygon.path {
+                guard coord.count == 2 else {
+                    return request.eventLoop.future(error: Abort(.badRequest, reason: "Expecting two values to form a coordinate but got \(coord.count)"))
+                }
+                let point = getRealOffset(
+                    at: Coordinate(latitude: coord[0], longitude: coord[1]) ,
+                    relativeTo: Coordinate(latitude: staticMap.latitude, longitude: staticMap.longitude),
+                    zoom: staticMap.zoom,
+                    scale: staticMap.scale,
+                    extraX: 0,
+                    extraY: 0
+                )
+                points.append((x: point.x + (Int(staticMap.width/2*UInt16(staticMap.scale))), y: point.y + Int(staticMap.height/2*UInt16(staticMap.scale))))
+            }
+            
+            var polygonPath = ""
+            for point in points {
+                polygonPath += "\(point.x),\(point.y) "
+            }
+            polygonPath.removeLast()
+            
+            polygonArguments += [
+                "-strokewidth", "\(polygon.strokeWidth)",
+                "-fill", polygon.fillColor,
+                "-stroke", polygon.strokeColor,
+                "-gravity", "Center",
+                "-draw", "\"polygon \(polygonPath)\""
+            ]
         }
-        let realOffsetYPrefix: String
-        if realOffset.y >= 0 {
-            realOffsetYPrefix = "+"
-        } else {
-            realOffsetYPrefix = ""
-        }
-
-        do {
-            try shellOut(to: "/usr/local/bin/convert", arguments: [
-                staticPath,
-                "\\(", markerPath, "-resize", "\(marker.width * UInt16(scale))x\(marker.height * UInt16(scale))", "\\)",
+        
+        var markerArguments = [String]()
+        for marker in staticMap.markers ?? [] {
+            let realOffset = getRealOffset(
+                at: Coordinate(latitude: marker.latitude, longitude: marker.longitude),
+                relativeTo: Coordinate(latitude: staticMap.latitude, longitude: staticMap.longitude),
+                zoom: staticMap.zoom,
+                scale: staticMap.scale,
+                extraX: marker.xOffset ?? 0,
+                extraY: marker.yOffset ?? 0
+            )
+            
+            let realOffsetXPrefix: String
+            if realOffset.x >= 0 {
+                realOffsetXPrefix = "+"
+            } else {
+                realOffsetXPrefix = ""
+            }
+            let realOffsetYPrefix: String
+            if realOffset.y >= 0 {
+                realOffsetYPrefix = "+"
+            } else {
+                realOffsetYPrefix = ""
+            }
+            
+            let markerHashed = marker.url.persistentHash
+            let markerFormat = marker.url.components(separatedBy: ".").last ?? "png"
+            let markerPath = "Cache/Marker/\(markerHashed).\(markerFormat)"
+            markerArguments += [
+                "\\(", markerPath, "-resize", "\(marker.width * UInt16(staticMap.scale))x\(marker.height * UInt16(staticMap.scale))", "\\)",
                 "-gravity", "Center",
                 "-geometry", "\(realOffsetXPrefix)\(realOffset.x)\(realOffsetYPrefix)\(realOffset.y)",
-                "-composite",
-                destinationPath
-            ])
-        } catch {
-            Log.error("Failed to run magick: \(error)")
-            throw RequestError(rawValue: 500, reason: "ImageMagick Error")
+                "-composite"
+            ]
+            
         }
-
+        
+        return request.application.threadPool.runIfActive(eventLoop: request.eventLoop) {
+            do {
+                try shellOut(to: imagemagickConvertCommand, arguments: [
+                    basePath] +
+                    polygonArguments +
+                    markerArguments +
+                    [path
+                    ])
+            } catch {
+                request.application.logger.error("Failed to run magick: \(error)")
+                throw Abort(.internalServerError, reason: "ImageMagick Error: \(error)")
+            }
+        }
+        
     }
-
-    internal static func combineImages(grids: [(firstPath: String, direction: CombineDirection, images: [(direction: CombineDirection, path: String)])], destinationPath: String) throws {
+    
+    public static func generateMultiStaticMap(request: Request, multiStaticMap: MultiStaticMap, path: String) -> EventLoopFuture<Void> {
+        var grids = [(firstPath: String, direction: CombineDirection, images: [(direction: CombineDirection, path: String)])]()
+        for grid in multiStaticMap.grid {
+            var firstMapUrl = ""
+            var images = [(CombineDirection, String)]()
+            for map in grid.maps {
+                let url = map.map.path
+                if map.direction == .first {
+                    firstMapUrl = url
+                } else {
+                    images.append((map.direction, url))
+                }
+            }
+            grids.append((firstMapUrl, grid.direction, images))
+        }
+        
         var args = [String]()
         for grid in grids {
             args.append("\\(")
@@ -75,58 +143,20 @@ internal class ImageUtils {
                 args.append("+append")
             }
         }
-        args.append(destinationPath)
-
-        do {
-            try shellOut(to: "/usr/local/bin/convert", arguments: args)
-        } catch {
-            Log.error("Failed to run magick: \(error)")
-            throw RequestError(rawValue: 500, reason: "ImageMagick Error")
-        }
-    }
-
-    internal static func drawPolygon(staticPath: String, destinationPath: String, polygon: Polygon, scale: UInt8, centerLat: Double, centerLon: Double, zoom: Double, width: UInt16, height: UInt16) throws {
-
-        var points = [(x: Int, y: Int)]()
-
-        for coord in polygon.path {
-            guard coord.count == 2 else {
-                throw RequestError.badGateway
+        args.append(path)
+        
+        return request.application.threadPool.runIfActive(eventLoop: request.eventLoop) {
+            do {
+                try shellOut(to: "/usr/local/bin/convert", arguments: args)
+            } catch {
+                request.application.logger.error("Failed to run magick: \(error)")
+                throw Abort(.internalServerError, reason: "ImageMagick Error: \(error)")
             }
-            let point = getRealOffset(
-                at: Coordinate(latitude: coord[0], longitude: coord[1]) ,
-                relativeTo: Coordinate(latitude: centerLat, longitude: centerLon),
-                zoom: zoom,
-                scale: scale,
-                extraX: 0,
-                extraY: 0
-            )
-            points.append((x: point.x + (Int(width/2*UInt16(scale))), y: point.y + Int(height/2*UInt16(scale))))
         }
-
-        var polygonPath = ""
-        for point in points {
-            polygonPath += "\(point.x),\(point.y) "
-        }
-        polygonPath.removeLast()
-
-        do {
-            try shellOut(to: "/usr/local/bin/convert", arguments: [
-                staticPath,
-                "-strokewidth", "\(polygon.strokeWidth)",
-                "-fill", polygon.fillColor,
-                "-stroke", polygon.strokeColor,
-                "-gravity", "Center",
-                "-draw", "polygon \(polygonPath)",
-                destinationPath
-            ])
-        } catch {
-            Log.error("Failed to run magick: \(error)")
-            throw RequestError(rawValue: 500, reason: "ImageMagick Error")
-        }
-
     }
-
+    
+    // MARK: - Utils
+    
     private static func getRealOffset(at: Coordinate, relativeTo center: Coordinate, zoom: Double, scale: UInt8, extraX: Int16, extraY: Int16) -> (x: Int, y: Int) {
         let realOffsetX: Int
         let realOffsetY: Int
@@ -146,5 +176,5 @@ internal class ImageUtils {
         }
         return (realOffsetX + (Int(extraX) * Int(scale)), realOffsetY + (Int(extraY) * Int(scale)))
     }
-
+    
 }

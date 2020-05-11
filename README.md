@@ -19,11 +19,14 @@
     - `GET tile/{style}/{z}/{x}/{y}/{scale}/{format}`
 - StaticMap: 
     - `POST /staticmap` (StaticMap Object in JSON Format as POST body)
-    - `GET /staticmap` (SaticMap Object in URL Parameters. Markers and Polygons need to be URL-encoded)
-    - `GET /staticmap/:template` (Template Enviroment parsed from URL Parameters. Parameters ending in `json` will be parsed as json. Multiple instances of same Parameter will be parsed as array)
+    - `GET /staticmap` (SaticMap Object in URL Parameters using URL-encoding)
+    - `GET /staticmap/:template` (Template Enviroment parsed from URL Parameters)
+    - `GET /staticmap/pregenerated/:id` (Get image from pregenerated map. Use GET or POST to /staticmap with pregenerate=true as URL Parameter to get pregenerate the map)
 - MutliStaticMap:
     - `POST /multistaticmap` (MultiStaticMap Object in JSON Format as POST body)
+    - `POST /multistaticmap` (MultiStaticMap Object in URL Parameters using URL-encoding)
     - `GET /multistaticmap/:template` (Template Enviroment parsed from URL Parameters. Parameters ending in `json` will be parsed as json. Multiple instances of same Parameter will be parsed as array)
+    - `GET /multistaticmap/pregenerated/:id` (Get image from pregenerated map. Use GET or POST to /staticmap with pregenerate=true as URL Parameter to get pregenerate the map)
 
 ### Style
 Get a list of styles by visiting `/styles`
@@ -119,10 +122,16 @@ Example:
 ## Examples
 
 ### Tiles
-https://tileserverurl/tile/klokantech-basic/{z}/{x}/{y}/2/png
+`GET https://tileserverurl/tile/klokantech-basic/{z}/{x}/{y}/2/png`
 
 ### StaticMap
-https://tileserverurl/staticmap?style=klokantech-basic&latitude=47.263416&longitude=11.400512&zoom=17&width=500&height=500&scale=2
+`GET https://tileserverurl/staticmap?style=klokantech-basic&latitude=47.263416&longitude=11.400512&zoom=17&width=500&height=500&scale=2`
+
+### Pregenerate StaticMap
+Pregenerate: `GET https://tileserverurl/staticmap?style=klokantech-basic&latitude=47.263416&longitude=11.400512&zoom=17&width=500&height=500&scale=2&pregenerate=true`
+Returns: `id`
+View: `GET https://tileserverurl/staticmap/pregenerated/{id}`
+
 
 ### StaticMap with Markers
 `POST https://tileserverurl/staticmap`
@@ -232,21 +241,21 @@ https://tileserverurl/staticmap?style=klokantech-basic&latitude=47.263416&longit
 ![multistaticmap response](.exampleimages/multistaticmap.png)
 
 ### StaticMap using Templates
-`pokemon.json` file in `Templates` directory (uses [Stencil](https://stencil.fuller.li) as TemplatingEngine):
+`pokemon.json` file in `Templates` directory (uses [Leaf](https://docs.vapor.codes/4.0/leaf/overview/) as TemplatingEngine):
 ```
 {
     "style": "klokantech-basic",
-    "latitude": {{lat}},
-    "longitude": {{lon}},
+    "latitude": #(lat),
+    "longitude": #(lon),
     "zoom": 15,
     "width": 500,
     "height": 250,
     "scale": 1,
     "markers": [
         {
-            "url": "https://rdmurl/static/img/pokemon/{{id}}{% if form %}-{{form}}{% endif %}.png",
-            "latitude": {{lat}},
-            "longitude": {{lon}},
+        "url": "https://rdmurl/static/img/pokemon/#(id)#if(form != nil):-#(form)#endif.png",
+            "latitude": #(lat),
+            "longitude": #(lon),
             "width": 50,
             "height": 50
         }

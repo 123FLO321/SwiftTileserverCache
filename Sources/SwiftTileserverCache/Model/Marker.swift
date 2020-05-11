@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import Cryptor
 
 public struct Marker: Codable, Hashable, Drawable {
     public var url: String

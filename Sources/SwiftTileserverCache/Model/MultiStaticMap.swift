@@ -18,4 +18,8 @@ public struct MultiStaticMap: Codable, Hashable, PersistentHashable {
     }
 
     public var grid: [DirectionedMultiStaticMap]
+
+    internal var path: String {
+        return "Cache/StaticMulti/\(persistentHash).png"
+    }
 }

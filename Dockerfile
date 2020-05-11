@@ -1,21 +1,36 @@
-FROM swift:5.1
-MAINTAINER 0815flo
-LABEL Description="Docker image for running Swift Tileserver Cache."
+# ================================
+# Build image
+# ================================
+FROM vapor/swift:5.2 as build
+WORKDIR /build
 
-RUN apt-get update && apt-get install -y sudo openssl libssl-dev libcurl4-openssl-dev
+# Copy required folders into container
+COPY Sources Sources
+COPY Tests Tests
+COPY Resources Resources
+COPY Package.swift Package.swift
 
-RUN apt-get -y update && apt-get install -y imagemagick && cp /usr/bin/convert /usr/local/bin
+# Compile with optimizations
+RUN swift build \
+    --enable-test-discovery \
+    -c release \
+    -Xswiftc -g
 
-# Expose default port
-EXPOSE 9000
+# ================================
+# Run image
+# ================================
+FROM vapor/ubuntu:18.04
+WORKDIR /run
 
-RUN mkdir /SwiftTileserverCache
-WORKDIR /SwiftTileserverCache
+# Install imagemagick
+RUN apt-get -y update && apt-get install -y imagemagick
+# Copy build artifacts
+COPY --from=build /build/.build/release /run
+# Copy Swift runtime libraries
+COPY --from=build /usr/lib/swift/ /usr/lib/swift/
+# Copy Resources
+COPY --from=build /build/Resources /run/Resources
 
-ADD Sources /SwiftTileserverCache/Sources
-ADD Tests /SwiftTileserverCache/Tests
-ADD Package.swift /SwiftTileserverCache
-RUN cd /SwiftTileserverCache && swift build -c release
-RUN cp .build/release/SwiftTileserverCacheApp .
 
-CMD ["./SwiftTileserverCacheApp"]
+ENTRYPOINT ["./SwiftTileserverCacheApp"]
+CMD ["serve", "--env", "production", "--log", "info", "--hostname", "0.0.0.0", "--port", "9000"]
