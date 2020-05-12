@@ -30,6 +30,5 @@ COPY --from=build /build/.build/release /SwiftTileserverCache
 # Copy Resources
 COPY --from=build /build/Resources /SwiftTileserverCache/Resources
 
-
 ENTRYPOINT ["./SwiftTileserverCacheApp"]
 CMD ["serve", "--env", "production", "--log", "info", "--hostname", "0.0.0.0", "--port", "9000"]
