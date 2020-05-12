@@ -1,13 +1,8 @@
 # ================================
 # Build image
 # ================================
-FROM swift:5.2.3 as build
+FROM swift:5.2 as build
 WORKDIR /build
-
-RUN apt-get -q update && export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true && \
-    apt-get -q install -y \
-    zlib1g-dev \
-    && rm -r /var/lib/apt/lists/*
 
 # Copy required folders into container
 COPY Sources Sources
@@ -24,18 +19,14 @@ RUN swift build \
 # ================================
 # Run image
 # ================================
-FROM ubuntu:18.04
+FROM swift:5.2
 WORKDIR /SwiftTileserverCache
 
-RUN apt-get -qq update && export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true && \
-    apt-get install -y \
-    libatomic1 libxml2 libz-dev libbsd0 tzdata imagemagick \
-    && rm -r /var/lib/apt/lists/*
+# Install imagemagick
+RUN apt-get -y update && apt-get install -y imagemagick
 
 # Copy build artifacts
 COPY --from=build /build/.build/release /SwiftTileserverCache
-# Copy Swift runtime libraries
-COPY --from=build /usr/lib/swift/ /usr/lib/swift/
 # Copy Resources
 COPY --from=build /build/Resources /SwiftTileserverCache/Resources
 

@@ -83,7 +83,7 @@ internal struct StaticMapController {
         } catch {
             return request.eventLoop.future(error: error)
         }
-        return request.application.leaf.renderer.render(path: "../../Templates/\(template).json", context: context).flatMap { buffer in
+        return request.leaf.render(path: "../../Templates/\(template).json", context: context).flatMap { buffer in
             var bufferVar = buffer
             do {
                 guard let staticMap = try bufferVar.readJSONDecodable(StaticMap.self, length: buffer.readableBytes) else {
@@ -155,19 +155,30 @@ internal struct StaticMapController {
     }
     
     private func loadMarker(request: Request, marker: Marker) -> EventLoopFuture<Void> {
-        guard URL(string: marker.url) != nil else {
-            return request.eventLoop.future(error: Abort(.badRequest, reason: "Marker url is not valid: \(marker.url)"))
-        }
-        let markerHashed = marker.url.persistentHash
-        let markerFormat = marker.url.components(separatedBy: ".").last ?? "png"
-        let path = "Cache/Marker/\(markerHashed).\(markerFormat)"
-        let domain = marker.url.components(separatedBy: "//").last?.components(separatedBy: "/").first ?? "?"
-        guard !FileManager.default.fileExists(atPath: path) else {
-            statsController.markerServed(new: false, path: path, domain: domain)
+        if marker.url.starts(with: "http://") || marker.url.starts(with: "https://") {
+            guard URL(string: marker.url) != nil else {
+                return request.eventLoop.future(error: Abort(.badRequest, reason: "Marker url is not valid: \(marker.url)"))
+            }
+            let markerHashed = marker.url.persistentHash
+            let markerFormat = marker.url.components(separatedBy: ".").last ?? "png"
+            let path = "Cache/Marker/\(markerHashed).\(markerFormat)"
+            let domain = marker.url.components(separatedBy: "//").last?.components(separatedBy: "/").first ?? "?"
+            guard !FileManager.default.fileExists(atPath: path) else {
+                statsController.markerServed(new: false, path: path, domain: domain)
+                return request.eventLoop.future()
+            }
+            return APIUtils.downloadFile(request: request, from: marker.url, to: path).always { _ in
+                self.statsController.markerServed(new: true, path: path, domain: domain)
+            }
+        } else {
+            let path = "Markers/\(marker.url)"
+            guard !path.contains("..") else {
+                return request.eventLoop.future(error: Abort(.badRequest))
+            }
+            guard FileManager.default.fileExists(atPath: path) else {
+                return request.eventLoop.future(error: Abort(.notFound, reason: "Marker not found"))
+            }
             return request.eventLoop.future()
-        }
-        return APIUtils.downloadFile(request: request, from: marker.url, to: path).always { _ in
-            self.statsController.markerServed(new: true, path: path, domain: domain)
         }
     }
     

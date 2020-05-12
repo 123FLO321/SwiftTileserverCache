@@ -15,6 +15,7 @@ services:
     volumes:
       - ./Cache:/SwiftTileserverCache/Cache
       - ./Templates:/SwiftTileserverCache/Templates
+#     - ./Markers/:/SwiftTileserverCache/Markers
     environment:
       TILE_SERVER_URL: http://tileserver # Leave this unless tileserver is external!
       TILE_CACHE_MAX_AGE_MINUTES: 10080 # 7 Days

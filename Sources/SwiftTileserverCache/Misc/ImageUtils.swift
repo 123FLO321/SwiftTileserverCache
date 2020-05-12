@@ -79,10 +79,15 @@ public class ImageUtils {
             } else {
                 realOffsetYPrefix = ""
             }
-            
-            let markerHashed = marker.url.persistentHash
-            let markerFormat = marker.url.components(separatedBy: ".").last ?? "png"
-            let markerPath = "Cache/Marker/\(markerHashed).\(markerFormat)"
+
+            let markerPath: String
+            if marker.url.starts(with: "http://") || marker.url.starts(with: "https://") {
+                let markerHashed = marker.url.persistentHash
+                let markerFormat = marker.url.components(separatedBy: ".").last ?? "png"
+                markerPath = "Cache/Marker/\(markerHashed).\(markerFormat)"
+            } else {
+                markerPath = "Markers/\(marker.url)"
+            }
             markerArguments += [
                 "\\(", markerPath, "-resize", "\(marker.width * UInt16(staticMap.scale))x\(marker.height * UInt16(staticMap.scale))", "\\)",
                 "-gravity", "Center",

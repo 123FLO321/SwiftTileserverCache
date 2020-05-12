@@ -74,7 +74,7 @@ internal struct MultiStaticMapController {
         } catch {
             return request.eventLoop.future(error: error)
         }
-        return request.application.leaf.renderer.render(path: "../../Templates/\(template).json", context: context).flatMap { buffer in
+        return request.leaf.render(path: "../../Templates/\(template).json", context: context).flatMap { buffer in
             var bufferVar = buffer
             do {
                 guard let multiStaticMap = try bufferVar.readJSONDecodable(MultiStaticMap.self, length: buffer.readableBytes) else {
