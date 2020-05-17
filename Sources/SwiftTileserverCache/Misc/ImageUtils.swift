@@ -49,8 +49,8 @@ public class ImageUtils {
             
             polygonArguments += [
                 "-strokewidth", "\(polygon.strokeWidth)",
-                "-fill", polygon.fillColor.replacingOccurrences(of: "#", with: "\\#"),
-                "-stroke", polygon.strokeColor.replacingOccurrences(of: "#", with: "\\#"),
+                "-fill", polygon.fillColor.bashEncoded,
+                "-stroke", polygon.strokeColor.bashEncoded,
                 "-gravity", "Center",
                 "-draw", "\"polygon \(polygonPath)\""
             ]
