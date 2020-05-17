@@ -2,11 +2,12 @@ import Vapor
 
 func cachecleaners(_ app: Application) throws {
     app.logger.info("Creating missing Directories")
-    try? FileManager().createDirectory(atPath: "Cache", withIntermediateDirectories: false)
-    try? FileManager().createDirectory(atPath: "Cache/Tile", withIntermediateDirectories: false)
-    try? FileManager().createDirectory(atPath: "Cache/Static", withIntermediateDirectories: false)
-    try? FileManager().createDirectory(atPath: "Cache/StaticMulti", withIntermediateDirectories: false)
-    try? FileManager().createDirectory(atPath: "Cache/Marker", withIntermediateDirectories: false)
+    try? FileManager.default.createDirectory(atPath: "Cache", withIntermediateDirectories: false)
+    try? FileManager.default.createDirectory(atPath: "Cache/Tile", withIntermediateDirectories: false)
+    try? FileManager.default.createDirectory(atPath: "Cache/Static", withIntermediateDirectories: false)
+    try? FileManager.default.createDirectory(atPath: "Cache/StaticMulti", withIntermediateDirectories: false)
+    try? FileManager.default.createDirectory(atPath: "Cache/Marker", withIntermediateDirectories: false)
+    try? FileManager.default.createDirectory(atPath: "Cache/Regeneratable", withIntermediateDirectories: false)
 
     if let maxAgeMinutes = UInt32(Environment.get("TILE_CACHE_MAX_AGE_MINUTES") ?? "") {
         let clearDelaySeconds = UInt32(Environment.get("TILE_CACHE_DELAY_SECONDS") ?? "") ?? 900

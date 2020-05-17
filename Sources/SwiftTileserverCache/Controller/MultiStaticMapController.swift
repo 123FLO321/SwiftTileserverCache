@@ -50,7 +50,7 @@ internal struct MultiStaticMapController {
                 self.statsController.staticMapServed(new: true, path: path, style: "multi")
             }
         } else {
-            return generateResponse(request: request, path: path).always {_ in
+            return ResponseUtils.generateResponse(request: request, staticMap: multiStaticMap, path: path).always {_ in
                 request.application.logger.info("Served a cached multi-static map")
                 self.statsController.staticMapServed(new: false, path: path, style: "multi")
             }
@@ -60,9 +60,16 @@ internal struct MultiStaticMapController {
     private func handleRequest(request: Request, id: String) -> EventLoopFuture<Response> {
         let path = "Cache/StaticMulti/\(id)"
         guard FileManager.default.fileExists(atPath: path) else {
-            return request.eventLoop.makeFailedFuture(Abort(.notFound))
+            let regeneratablePath = "Cache/Regeneratable/\(path.components(separatedBy: "/").last!).json"
+            guard FileManager.default.fileExists(atPath: regeneratablePath) else {
+                return request.eventLoop.makeFailedFuture(Abort(.notFound))
+            }
+            return ResponseUtils.readRegeneratable(request: request, path: regeneratablePath, as: MultiStaticMap.self).flatMap { multiStaticMap in
+                return self.generateStaticMapAndResponse(request: request, path: path, multiStaticMap: multiStaticMap)
+            }
         }
-        return generateResponse(request: request, path: path).always {_ in
+        let staticMap: StaticMap? = nil
+        return ResponseUtils.generateResponse(request: request, staticMap: staticMap, path: path).always {_ in
             request.application.logger.info("Served a pregenerate multi-static map")
         }
     }
@@ -98,21 +105,9 @@ internal struct MultiStaticMapController {
         }
         return request.eventLoop.flatten(mapFutures).flatMap {
             return ImageUtils.generateMultiStaticMap(request: request, multiStaticMap: multiStaticMap, path: path).flatMap {
-                return self.generateResponse(request: request, path: path)
+                return ResponseUtils.generateResponse(request: request, staticMap: multiStaticMap, path: path)
             }
         }
-    }
-
-    private func generateResponse(request: Request, path: String) -> EventLoopFuture<Response> {
-        let response: Response
-        if (try? request.query.get(Bool.self, at: "pregenerate")) ?? false {
-            response = Response(body: .init(string: path.components(separatedBy: "/").last!))
-            response.headers.add(name: .contentType, value: "text/plain")
-        } else {
-            response = request.fileio.streamFile(at: path)
-            response.headers.add(name: .cacheControl, value: "max-age=604800, must-revalidate")
-        }
-        return request.eventLoop.future(response)
     }
 
 }
