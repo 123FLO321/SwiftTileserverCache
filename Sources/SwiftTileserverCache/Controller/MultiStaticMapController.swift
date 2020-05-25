@@ -23,14 +23,14 @@ internal struct MultiStaticMapController {
 
     internal func getTemplate(request: Request) throws -> EventLoopFuture<Response> {
         guard let template = request.parameters.get("template") else {
-            throw Abort(.badRequest)
+            throw Abort(.badRequest, reason: "Missing template")
         }
         return handleRequest(request: request, template: template)
     }
 
     internal func getPregenerated(request: Request) throws -> EventLoopFuture<Response> {
         guard let id = request.parameters.get("id"), !id.contains("..") else {
-            throw Abort(.badRequest)
+            throw Abort(.badRequest, reason: "Missing id")
         }
         return handleRequest(request: request, id: id)
     }
@@ -62,7 +62,7 @@ internal struct MultiStaticMapController {
         guard FileManager.default.fileExists(atPath: path) else {
             let regeneratablePath = "Cache/Regeneratable/\(path.components(separatedBy: "/").last!).json"
             guard FileManager.default.fileExists(atPath: regeneratablePath) else {
-                return request.eventLoop.makeFailedFuture(Abort(.notFound))
+                return request.eventLoop.makeFailedFuture(Abort(.notFound, reason: "No regeneratable found with this id"))
             }
             return ResponseUtils.readRegeneratable(request: request, path: regeneratablePath, as: MultiStaticMap.self).flatMap { multiStaticMap in
                 return self.generateStaticMapAndResponse(request: request, path: path, multiStaticMap: multiStaticMap)
@@ -89,7 +89,10 @@ internal struct MultiStaticMapController {
                 }
                 return self.handleRequest(request: request, multiStaticMap: multiStaticMap)
             } catch {
-                return request.eventLoop.future(error: error)
+                var bufferError = buffer
+                let string = bufferError.readString(length: bufferVar.readableBytes) ?? ""
+                let reason = "Template Invalid (\(error.localizedDescription)) [\(string)]"
+                return request.eventLoop.future(error: Abort(.internalServerError, reason: reason))
             }
         }
     }

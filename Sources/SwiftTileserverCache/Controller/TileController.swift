@@ -48,8 +48,9 @@ internal struct TileController {
         let tileURL = "\(tileServerURL)/styles/\(style)/\(z)/\(x)/\(y)\(scaleString).\(format)"
         return APIUtils.downloadFile(request: request, from: tileURL, to: path).flatMap {
             return self.generateResponse(request: request, path: path)
+        }.flatMapError { error in
+            return request.eventLoop.makeFailedFuture(Abort(.badRequest, reason: "Failed to load tile (\(error.localizedDescription))"))
         }
-
     }
 
     private func generateResponse(request: Request, path: String) -> EventLoopFuture<Response> {

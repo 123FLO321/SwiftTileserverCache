@@ -22,14 +22,14 @@ internal struct StaticMapController {
     
     internal func getTemplate(request: Request) throws -> EventLoopFuture<Response> {
         guard let template = request.parameters.get("template") else {
-            throw Abort(.badRequest)
+            throw Abort(.badRequest, reason: "Missing template")
         }
         return handleRequest(request: request, template: template)
     }
     
     internal func getPregenerated(request: Request) throws -> EventLoopFuture<Response> {
         guard let id = request.parameters.get("id"), !id.contains("..") else {
-            throw Abort(.badRequest)
+            throw Abort(.badRequest, reason: "Missing id")
         }
         return handleRequest(request: request, id: id)
     }
@@ -71,7 +71,7 @@ internal struct StaticMapController {
         guard FileManager.default.fileExists(atPath: path) else {
             let regeneratablePath = "Cache/Regeneratable/\(path.components(separatedBy: "/").last!).json"
             guard FileManager.default.fileExists(atPath: regeneratablePath) else {
-                return request.eventLoop.makeFailedFuture(Abort(.notFound))
+                return request.eventLoop.makeFailedFuture(Abort(.notFound, reason: "No regeneratable found with this id"))
             }
             return ResponseUtils.readRegeneratable(request: request, path: regeneratablePath, as: StaticMap.self).flatMap { staicMap in
                 return self.generateStaticMapAndResponse(request: request, path: path, staticMap: staicMap)
@@ -98,7 +98,10 @@ internal struct StaticMapController {
                 }
                 return self.handleRequest(request: request, staticMap: staticMap)
             } catch {
-                return request.eventLoop.future(error: error)
+                var bufferError = buffer
+                let string = bufferError.readString(length: bufferVar.readableBytes) ?? ""
+                let reason = "Template Invalid (\(error.localizedDescription)) [\(string)]"
+                return request.eventLoop.future(error: Abort(.internalServerError, reason: reason))
             }
         }
     }
@@ -137,7 +140,9 @@ internal struct StaticMapController {
         }
         
         let tileURL = "\(tileServerURL)/styles/\(staticMap.style)/static/\(staticMap.longitude),\(staticMap.latitude),\(staticMap.zoom)@\(staticMap.bearing ?? 0),\(staticMap.pitch ?? 0)/\(staticMap.width)x\(staticMap.height)\(scaleString).\(staticMap.format ?? "png")"
-        return APIUtils.downloadFile(request: request, from: tileURL, to: path)
+        return APIUtils.downloadFile(request: request, from: tileURL, to: path).flatMapError { error in
+            return request.eventLoop.makeFailedFuture(Abort(.badRequest, reason: "Failed to load base static map: (\(error.localizedDescription))"))
+        }
     }
     
     private func generateFilledStaticMap(request: Request, basePath: String, path: String, staticMap: StaticMap) -> EventLoopFuture<Void> {
@@ -176,11 +181,13 @@ internal struct StaticMapController {
             }
             return APIUtils.downloadFile(request: request, from: marker.url, to: path).always { _ in
                 self.statsController.markerServed(new: true, path: path, domain: domain)
+            }.flatMapError { error in
+                return request.eventLoop.makeFailedFuture(Abort(.badRequest, reason: "Failed to load marker: \(marker.url) (\(error.localizedDescription))"))
             }
         } else {
             let path = "Markers/\(marker.url)"
             guard !path.contains("..") else {
-                return request.eventLoop.future(error: Abort(.badRequest))
+                return request.eventLoop.future(error: Abort(.badRequest, reason: "Path is not allowed to contain \"..\""))
             }
             guard FileManager.default.fileExists(atPath: path) else {
                 return request.eventLoop.future(error: Abort(.notFound, reason: "Marker not found"))

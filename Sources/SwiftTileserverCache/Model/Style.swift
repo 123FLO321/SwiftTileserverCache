@@ -5,11 +5,9 @@
 //  Created by Florian Kostenzer on 03.03.20.
 //
 
-import Foundation
+import Vapor
 
-public struct Style: Codable {
+public struct Style: Content {
     public var id: String
-    public var version: Int
     public var name: String
-    public var url: String
 }

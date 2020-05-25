@@ -53,12 +53,8 @@ internal class StatsController {
         return request.view.render("Stats", context)
     }
 
-    internal func getStyles(request: Request) -> EventLoopFuture<[String]> {
-        return loadStyles(request: request).map { styles in
-            return styles.map { (style) -> String in
-                return style.id
-            }
-        }
+    internal func getStyles(request: Request) -> EventLoopFuture<[Style]> {
+        return loadStyles(request: request)
     }
 
     // MARK: - Stats
@@ -91,7 +87,9 @@ internal class StatsController {
 
     private func loadStyles(request: Request) -> EventLoopFuture<[Style]> {
         let stylesURL = "\(tileServerURL)/styles.json"
-        return APIUtils.loadJSON(request: request, from: stylesURL)
+        return APIUtils.loadJSON(request: request, from: stylesURL).flatMapError { error in
+            return request.eventLoop.makeFailedFuture(Abort(.badRequest, reason: "Failed to load styles: (\(error.localizedDescription))"))
+        }
     }
 
 }
