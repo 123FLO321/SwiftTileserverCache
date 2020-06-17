@@ -26,6 +26,6 @@ services:
       STATIC_MULTI_CACHE_DELAY_SECONDS: 900 # 15 Minutes
       MARKER_CACHE_MAX_AGE_MINUTES: 1440 # 1 Day
       MARKER_CACHE_DELAY_SECONDS: 3600 # 1 Hour
-      LOGGING_LEVEL: verbose # debug, verbose or info
+      LOG_LEVEL: info
     ports:
       - 9000:9000

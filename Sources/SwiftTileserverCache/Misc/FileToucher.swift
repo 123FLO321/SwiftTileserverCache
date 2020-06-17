@@ -31,11 +31,13 @@ public class FileToucher {
     private func runOnce() {
         queueLock.lock()
         if !queue.isEmpty {
-            do {
-                try shellOut(to: "/usr/bin/touch", arguments: queue)
-                logger.debug("Touched \(queue.count) Files")
-            } catch {
-                logger.warning("Failed to touch files: \(error)")
+            for slice in queue.chunked(into: 100) {
+                do {
+                    try shellOut(to: "/usr/bin/touch", arguments: slice)
+                    logger.info("Touched \(queue.count) Files")
+                } catch {
+                    logger.warning("Failed to touch files: \(error)")
+                }
             }
             queue = []
         }
