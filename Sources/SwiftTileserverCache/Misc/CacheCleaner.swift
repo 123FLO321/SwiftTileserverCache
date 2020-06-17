@@ -37,9 +37,9 @@ public class CacheCleaner {
         let files = try fileManager.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.contentModificationDateKey])
         for file in files {
             do {
-                if let date = try file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate,
+                if let date = try file.resourceValues(forKeys: [.attributeModificationDateKey]).contentModificationDate,
                     now.timeIntervalSince(date) >= Double(maxAgeMinutes * 60) {
-                    logger.debug("Removing file \(file.lastPathComponent) (Too old)")
+                    logger.verbose("Removing file \(file.lastPathComponent) (Too old)")
                     do {
                         try fileManager.removeItem(at: file)
                     } catch {
