@@ -30,16 +30,20 @@ public class FileToucher {
 
     private func runOnce() {
         queueLock.lock()
+        var count = 0
         if !queue.isEmpty {
             for slice in queue.chunked(into: 100) {
                 do {
                     try shellOut(to: "/usr/bin/touch -c", arguments: slice)
-                    logger.info("Touched \(queue.count) Files")
+                    count += slice.count
                 } catch {
                     logger.warning("Failed to touch files: \(error)")
                 }
             }
             queue = []
+        }
+        if count != 0 {
+            logger.info("Touched \(count) Files")
         }
         queueLock.unlock()
     }
