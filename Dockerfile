@@ -30,10 +30,5 @@ COPY --from=build /build/.build/release /SwiftTileserverCache
 # Copy Resources
 COPY --from=build /build/Resources /SwiftTileserverCache/Resources
 
-ENV LOG_LEVEL info
-ENV ENVIROMENT production
-ENV HOSTNAME 0.0.0.0
-ENV PORT 9000
-
 ENTRYPOINT ["./SwiftTileserverCacheApp"]
-CMD ["serve", "--env", "$ENVIROMENT", "--log", "$LOG_LEVEL", "--hostname", "$HOSTNAME", "--port", "$PORT"]
+CMD ["serve", "--env", "production", "--log", "info", "--hostname", "0.0.0.0", "--port", "9000"]

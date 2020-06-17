@@ -33,7 +33,7 @@ public class FileToucher {
         if !queue.isEmpty {
             for slice in queue.chunked(into: 100) {
                 do {
-                    try shellOut(to: "/usr/bin/touch", arguments: slice)
+                    try shellOut(to: "/usr/bin/touch -c", arguments: slice)
                     logger.info("Touched \(queue.count) Files")
                 } catch {
                     logger.warning("Failed to touch files: \(error)")

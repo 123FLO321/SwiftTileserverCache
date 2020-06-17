@@ -36,10 +36,13 @@ public class CacheCleaner {
         let now = Date()
         let files = try fileManager.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.contentModificationDateKey])
         var deletedCount = 0
+        print(files.count)
         for file in files {
             do {
-                if let date = try file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate,
-                    now.timeIntervalSince(date) >= Double(maxAgeMinutes * 60) {
+                print(file)
+                let date = try file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+                print(date as Any, (date != nil) ? now.timeIntervalSince(date!) : "null")
+                if (date != nil), now.timeIntervalSince(date!) >= Double(maxAgeMinutes * 60) {
                     do {
                         try fileManager.removeItem(at: file)
                         deletedCount += 1
