@@ -21,11 +21,25 @@ internal struct MultiStaticMapController {
         return handleRequest(request: request, multiStaticMap: multiStaticMap)
     }
 
+    internal func post(request: Request) throws -> EventLoopFuture<Response> {
+        let multiStaticMap = try request.content.decode(MultiStaticMap.self)
+        return handleRequest(request: request, multiStaticMap: multiStaticMap)
+    }
+
     internal func getTemplate(request: Request) throws -> EventLoopFuture<Response> {
         guard let template = request.parameters.get("template") else {
             throw Abort(.badRequest, reason: "Missing template")
         }
-        return handleRequest(request: request, template: template)
+        let context = try request.query.decode([String: LeafData].self)
+        return handleRequest(request: request, template: template, context: context)
+    }
+
+    internal func postTemplate(request: Request) throws -> EventLoopFuture<Response> {
+        guard let template = request.parameters.get("template") else {
+            throw Abort(.badRequest, reason: "Missing template")
+        }
+        let context = try request.content.decode([String: LeafData].self)
+        return handleRequest(request: request, template: template, context: context)
     }
 
     internal func getPregenerated(request: Request) throws -> EventLoopFuture<Response> {
@@ -33,11 +47,6 @@ internal struct MultiStaticMapController {
             throw Abort(.badRequest, reason: "Missing id")
         }
         return handleRequest(request: request, id: id)
-    }
-
-    internal func post(request: Request) throws -> EventLoopFuture<Response> {
-        let multiStaticMap = try request.content.decode(MultiStaticMap.self)
-        return handleRequest(request: request, multiStaticMap: multiStaticMap)
     }
 
     // MARK: - Utils
@@ -74,13 +83,7 @@ internal struct MultiStaticMapController {
         }
     }
 
-    private func handleRequest(request: Request, template: String) -> EventLoopFuture<Response> {
-        let context: [String: LeafData]
-        do {
-            context = try request.query.decode([String: LeafData].self)
-        } catch {
-            return request.eventLoop.future(error: error)
-        }
+    private func handleRequest(request: Request, template: String, context: [String: LeafData]) -> EventLoopFuture<Response> {
         return request.leaf.render(path: "../../Templates/\(template).json", context: context).flatMap { buffer in
             var bufferVar = buffer
             do {

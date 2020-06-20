@@ -17,12 +17,14 @@ func routes(_ app: Application) throws {
     let staticMapController = StaticMapController(tileServerURL: tileServerURL, statsController: statsController)
     app.get("staticmap", use: staticMapController.get)
     app.get("staticmap", ":template", use: staticMapController.getTemplate)
+    app.post("staticmap", ":template", use: staticMapController.postTemplate)
     app.get("staticmap", "pregenerated", ":id", use: staticMapController.getPregenerated)
     app.post("staticmap", use: staticMapController.post)
 
     let multiStaticMapController = MultiStaticMapController(tileServerURL: tileServerURL, statsController: statsController, staticMapController: staticMapController)
     app.get("multistaticmap", use: multiStaticMapController.get)
     app.get("multistaticmap", ":template", use: multiStaticMapController.getTemplate)
+    app.post("multistaticmap", ":template", use: multiStaticMapController.postTemplate)
     app.get("multistaticmap", "pregenerated", ":id", use: multiStaticMapController.getPregenerated)
     app.post("multistaticmap", use: multiStaticMapController.post)
 }
