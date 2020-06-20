@@ -21,11 +21,13 @@
     - `POST /staticmap` (StaticMap Object in JSON Format as POST body)
     - `GET /staticmap` (SaticMap Object in URL Parameters using URL-encoding)
     - `GET /staticmap/:template` (Template Enviroment parsed from URL Parameters)
+    - `POST /staticmap/:template` (Template Enviroment in JSON Format Format as POST body)
     - `GET /staticmap/pregenerated/:id` (Get image from pregenerated map. Use GET or POST to /staticmap with pregenerate=true as URL Parameter to get pregenerate the map)
 - MutliStaticMap:
     - `POST /multistaticmap` (MultiStaticMap Object in JSON Format as POST body)
     - `POST /multistaticmap` (MultiStaticMap Object in URL Parameters using URL-encoding)
     - `GET /multistaticmap/:template` (Template Enviroment parsed from URL Parameters. Parameters ending in `json` will be parsed as json. Multiple instances of same Parameter will be parsed as array)
+    - `POST /multistaticmap/:template` (Template Enviroment in JSON Format Format as POST body)
     - `GET /multistaticmap/pregenerated/:id` (Get image from pregenerated map. Use GET or POST to /staticmap with pregenerate=true as URL Parameter to get pregenerate the map)
 
 ### Style
