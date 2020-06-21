@@ -104,7 +104,7 @@ internal class StaticMapController {
     }
     
     private func handleRequest(request: Request, template: String, context: [String: LeafData]) -> EventLoopFuture<Response> {
-        return request.leaf.render(path: "../../Templates/\(template).json", context: context).flatMap { buffer in
+        return request.leaf.render(path: "Templates/\(template).json", context: context).flatMap { buffer in
             var bufferVar = buffer
             do {
                 guard let staticMap = try bufferVar.readJSONDecodable(StaticMap.self, length: buffer.readableBytes) else {

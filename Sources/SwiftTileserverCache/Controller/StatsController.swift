@@ -52,7 +52,7 @@ internal class StatsController {
             "staticMapHitRatios": staticMapHitRatios,
             "markerHitRatios": markerHitRatios
         ]
-        return request.view.render("Stats", context)
+        return request.view.render("Resources/Views/Stats", context)
     }
 
     internal func getStyles(request: Request) -> EventLoopFuture<[Style]> {
