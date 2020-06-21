@@ -13,7 +13,8 @@ public class APIUtils {
     private init() {}
     
     public static func downloadFile(request: Request, from: String, to: String) -> EventLoopFuture<Void> {
-        return request.client.get(URI(string: from)).flatMap { response in
+        let headers = HTTPHeaders([("User-Agent", "TileserverCache")])
+        return request.client.get(URI(string: from), headers: headers).flatMap { response in
             let errorReason: String
             if response.status.code >= 200 && response.status.code < 300 {
                 if let body = response.body, body.readableBytes != 0 {
@@ -43,7 +44,8 @@ public class APIUtils {
     }
     
     public static func loadJSON<T: Decodable>(request: Request, from: String) -> EventLoopFuture<T> {
-        return request.client.get(URI(string: from)).flatMap { response in
+        let headers = HTTPHeaders([("User-Agent", "TileserverCache")])
+        return request.client.get(URI(string: from), headers: headers).flatMap { response in
             let errorReason: String
             if response.status.code >= 200 && response.status.code < 300 {
                 do {

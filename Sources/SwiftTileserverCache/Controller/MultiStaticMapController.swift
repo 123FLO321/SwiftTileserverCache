@@ -8,11 +8,15 @@
 import Vapor
 import Leaf
 
-internal struct MultiStaticMapController {
+internal class MultiStaticMapController {
 
-    internal let tileServerURL: String
-    internal let statsController: StatsController
-    internal let staticMapController: StaticMapController
+    private let staticMapController: StaticMapController
+    private let statsController: StatsController
+
+    internal init(staticMapController: StaticMapController, statsController: StatsController) {
+        self.staticMapController = staticMapController
+        self.statsController = statsController
+    }
 
     // MARK: - Routes
 

@@ -11,6 +11,7 @@ import Leaf
 internal class StatsController {
 
     private let tileServerURL: String
+    private let tiles: [(style: Style, url: String)]
     private let fileToucher: FileToucher
 
     private let tileHitRatioLock = NSLock()
@@ -20,8 +21,9 @@ internal class StatsController {
     private let markerHitRatioLock = NSLock()
     private var markerHitRatios = [String: HitRatio]()
 
-    internal init(tileServerURL: String, fileToucher: FileToucher) {
+    internal init(tileServerURL: String, tiles: [(style: Style, url: String)], fileToucher: FileToucher) {
         self.tileServerURL = tileServerURL
+        self.tiles = tiles
         self.fileToucher = fileToucher
     }
 
@@ -89,7 +91,9 @@ internal class StatsController {
         let stylesURL = "\(tileServerURL)/styles.json"
         return APIUtils.loadJSON(request: request, from: stylesURL).flatMapError { error in
             return request.eventLoop.makeFailedFuture(Abort(.badRequest, reason: "Failed to load styles: (\(error.localizedDescription))"))
-        }
+        }.map({ (styles) -> ([Style]) in
+            return styles + self.tiles.map({$0.style})
+        })
     }
 
 }

@@ -10,9 +10,9 @@ import Vapor
 import ShellOut
 
 public class ImageUtils {
-    
+
     private init() {}
-    
+
     #if os(macOS)
     private static let imagemagickConvertCommand = "/usr/local/bin/convert"
     #else
@@ -20,8 +20,76 @@ public class ImageUtils {
     #endif
     
     // MARK: - Generation
+
+    public static func generateBaseStaticMap(request: Request, staticMap: StaticMap, tilePaths: [String], path: String, offsetX: Int, offsetY: Int, hasScale: Bool) -> EventLoopFuture<Void> {
+
+        var args: [String]
+        if tilePaths.count == 1 {
+            args = tilePaths
+        } else {
+            var lastY: Int?
+            var currentSemgent = 0
+            var segments = [[String]]()
+            for tilePath in tilePaths.sorted() {
+                if segments.count == 0 {
+                    segments.append(["\\("])
+                }
+                let split = tilePath.components(separatedBy: "-")
+                let y = Int(split[split.count-3]) ?? 0
+                if (lastY != nil) {
+                    if y == lastY {
+                        segments[currentSemgent].append(tilePath)
+                        segments[currentSemgent].append("-append")
+                    } else {
+                        segments[currentSemgent].append("\\)")
+                        if segments.count != 1 {
+                            segments[currentSemgent].append("+append")
+                        }
+                        currentSemgent += 1
+                        segments.append(["\\("])
+                        segments[currentSemgent].append(tilePath)
+                    }
+                } else {
+                    segments[currentSemgent].append(tilePath)
+                }
+                lastY = y
+            }
+            segments[currentSemgent].append("\\)")
+            segments[currentSemgent].append("+append")
+            args = segments.flatMap({$0})
+        }
+
+        let imgWidth: Int
+        let imgHeight: Int
+        let imgWidthOffset: Int
+        let imgHeightOffset: Int
+        if hasScale && staticMap.scale > 1 {
+            imgWidth = Int(staticMap.width) * Int(staticMap.scale)
+            imgHeight = Int(staticMap.height) * Int(staticMap.scale)
+            imgWidthOffset = (offsetX - Int(staticMap.width) / 2) * Int(staticMap.scale)
+            imgHeightOffset = (offsetY - Int(staticMap.height) / 2) * Int(staticMap.scale)
+        } else {
+            imgWidth = Int(staticMap.width)
+            imgHeight = Int(staticMap.height)
+            imgWidthOffset = offsetX - Int(staticMap.width) / 2
+            imgHeightOffset = offsetY - Int(staticMap.height) / 2
+        }
+        args += ["-crop", "\(imgWidth)x\(imgHeight)+\(imgWidthOffset)+\(imgHeightOffset)", "+repage", path]
+        return request.application.threadPool.runIfActive(eventLoop: request.eventLoop) {
+            do {
+                try shellOut(to: ImageUtils.imagemagickConvertCommand, arguments: args)
+            } catch let error as ShellOutError {
+                request.application.logger.error("Failed to run magick: \(error.message)")
+                throw Abort(.internalServerError, reason: "ImageMagick Error: \(error.message)")
+            } catch {
+                request.application.logger.error("Failed to run magick: \(error)")
+                throw Abort(.internalServerError, reason: "ImageMagick Error")
+            }
+        }
+    }
+
     
-    public static func generateStaticMap(request: Request, staticMap: StaticMap, basePath: String, path: String) -> EventLoopFuture<Void> {
+    public static func generateStaticMap(request: Request, staticMap: StaticMap, basePath: String, path: String, sphericalMercator: SphericalMercator) -> EventLoopFuture<Void> {
         var polygonArguments = [String]()
         for polygon in staticMap.polygons ?? [] {
             var points = [(x: Int, y: Int)]()
@@ -36,7 +104,8 @@ public class ImageUtils {
                     zoom: staticMap.zoom,
                     scale: staticMap.scale,
                     extraX: 0,
-                    extraY: 0
+                    extraY: 0,
+                    sphericalMercator: sphericalMercator
                 )
                 points.append((x: point.x + (Int(staticMap.width/2*UInt16(staticMap.scale))), y: point.y + Int(staticMap.height/2*UInt16(staticMap.scale))))
             }
@@ -64,7 +133,8 @@ public class ImageUtils {
                 zoom: staticMap.zoom,
                 scale: staticMap.scale,
                 extraX: marker.xOffset ?? 0,
-                extraY: marker.yOffset ?? 0
+                extraY: marker.yOffset ?? 0,
+                sphericalMercator: sphericalMercator
             )
             
             let realOffsetXPrefix: String
@@ -99,7 +169,7 @@ public class ImageUtils {
         
         return request.application.threadPool.runIfActive(eventLoop: request.eventLoop) {
             do {
-                try shellOut(to: imagemagickConvertCommand, arguments: [
+                try shellOut(to: ImageUtils.imagemagickConvertCommand, arguments: [
                     basePath] +
                     polygonArguments +
                     markerArguments +
@@ -168,15 +238,15 @@ public class ImageUtils {
     
     // MARK: - Utils
     
-    private static func getRealOffset(at: Coordinate, relativeTo center: Coordinate, zoom: Double, scale: UInt8, extraX: Int16, extraY: Int16) -> (x: Int, y: Int) {
+    private static func getRealOffset(at: Coordinate, relativeTo center: Coordinate, zoom: Double, scale: UInt8, extraX: Int16, extraY: Int16, sphericalMercator: SphericalMercator) -> (x: Int, y: Int) {
         let realOffsetX: Int
         let realOffsetY: Int
         if center.latitude == at.latitude && center.longitude == at.longitude {
             realOffsetX = 0
             realOffsetY = 0
         } else {
-            if let px1 = SphericalMercator().px(coordinate: Coordinate(latitude: center.latitude, longitude: center.longitude), zoom: 20),
-                let px2 = SphericalMercator().px(coordinate: Coordinate(latitude: at.latitude, longitude: at.longitude), zoom: 20) {
+            if let px1 = sphericalMercator.px(coordinate: Coordinate(latitude: center.latitude, longitude: center.longitude), zoom: 20),
+                let px2 = sphericalMercator.px(coordinate: Coordinate(latitude: at.latitude, longitude: at.longitude), zoom: 20) {
                 let pxScale = pow(2, Double(zoom) - 20)
                 realOffsetX = Int((px2.x - px1.x) * Double(pxScale) * Double(scale))
                 realOffsetY = Int((px2.y - px1.y) * Double(pxScale) * Double(scale))

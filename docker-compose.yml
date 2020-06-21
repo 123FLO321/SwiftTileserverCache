@@ -26,5 +26,6 @@ services:
       STATIC_MULTI_CACHE_DELAY_SECONDS: 900 # 15 Minutes
       MARKER_CACHE_MAX_AGE_MINUTES: 1440 # 1 Day
       MARKER_CACHE_DELAY_SECONDS: 3600 # 1 Hour
+#      TILE_URL_MAPBOX_SATTELITE: https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}{@scale}.{format}?access_token=xxx
     ports:
       - 9000:9000

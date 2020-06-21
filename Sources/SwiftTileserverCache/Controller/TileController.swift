@@ -7,10 +7,17 @@
 
 import Vapor
 
-internal struct TileController {
+internal class TileController {
 
-    internal let tileServerURL: String
-    internal let statsController: StatsController
+    private let tileServerURL: String
+    private let statsController: StatsController
+    private let tiles: [String: String]
+
+    internal init(tileServerURL: String, tiles: [(style: Style, url: String)], statsController: StatsController) {
+        self.tileServerURL = tileServerURL
+        self.tiles = tiles.reduce(into: [String: String](), { $0[$1.style.id] = $1.url })
+        self.statsController = statsController
+    }
 
     // MARK: - Routes
 
@@ -26,30 +33,42 @@ internal struct TileController {
             format == "png" || format == "jpg" else {
                 throw Abort(.badRequest)
         }
-
-        let path = "Cache/Tile/\(style)-\(z)-\(x)-\(y)-\(scale).\(format)"
-        if !FileManager.default.fileExists(atPath: path) {
-            return generateTileAndResponse(request: request, path: path, style: style, z: z, x: x, y: y, scale: scale, format: format).always {_ in
-                request.application.logger.info("Served a generated tile")
-                self.statsController.tileServed(new: true, path: path, style: style)
-            }
-        } else {
-            return generateResponse(request: request, path: path).always {_ in
-                request.application.logger.info("Served a cached tile")
-                self.statsController.tileServed(new: false, path: path, style: style)
-            }
-        }
+        return generateTileAndResponse(request: request, style: style, z: z, x: x, y: y, scale: scale, format: format)
     }
 
     // MARK: - Utils
 
-    private func generateTileAndResponse(request: Request, path: String, style: String, z: Int, x: Int, y: Int, scale: UInt8, format: String) -> EventLoopFuture<Response> {
+    internal func generateTile(request: Request, style: String, z: Int, x: Int, y: Int, scale: UInt8, format: String) -> EventLoopFuture<String> {
+        let path = "Cache/Tile/\(style)-\(z)-\(x)-\(y)-\(scale).\(format)"
+        guard !FileManager.default.fileExists(atPath: path) else {
+            request.application.logger.info("Served a cached tile")
+            self.statsController.tileServed(new: false, path: path, style: style)
+            return request.eventLoop.future(path)
+        }
+
         let scaleString = scale == 1 ? "" : "@\(scale)x"
-        let tileURL = "\(tileServerURL)/styles/\(style)/\(z)/\(x)/\(y)\(scaleString).\(format)"
-        return APIUtils.downloadFile(request: request, from: tileURL, to: path).flatMap {
-            return self.generateResponse(request: request, path: path)
-        }.flatMapError { error in
+        let tileURL: String
+        if let url = tiles[style] {
+            tileURL = url.replacingOccurrences(of: "{z}", with: "\(z)")
+                         .replacingOccurrences(of: "{x}", with: "\(x)")
+                         .replacingOccurrences(of: "{y}", with: "\(y)")
+                         .replacingOccurrences(of: "{scale}", with: "\(scale)")
+                         .replacingOccurrences(of: "{@scale}", with: scaleString)
+                         .replacingOccurrences(of: "{format}", with: format)
+        } else {
+            tileURL = "\(tileServerURL)/styles/\(style)/\(z)/\(x)/\(y)\(scaleString).\(format)"
+        }
+        return APIUtils.downloadFile(request: request, from: tileURL, to: path).flatMapError { error in
             return request.eventLoop.makeFailedFuture(Abort(.badRequest, reason: "Failed to load tile (\(error.localizedDescription))"))
+        }.always { _ in
+            request.application.logger.info("Served a generated tile")
+            self.statsController.tileServed(new: false, path: path, style: style)
+        }.transform(to: path)
+    }
+
+    private func generateTileAndResponse(request: Request, style: String, z: Int, x: Int, y: Int, scale: UInt8, format: String) -> EventLoopFuture<Response> {
+        return generateTile(request: request, style: style, z: z, x: x, y: y, scale: scale, format: format).flatMap { path in
+            return self.generateResponse(request: request, path: path)
         }
     }
 

@@ -8,10 +8,21 @@
 import Vapor
 import Leaf
 
-internal struct StaticMapController {
+internal class StaticMapController {
     
-    internal let tileServerURL: String
-    internal let statsController: StatsController
+    private let tileServerURL: String
+    private let tiles: [String: String]
+    private let tileController: TileController
+    private let statsController: StatsController
+
+    private let sphericalMercator = SphericalMercator()
+
+    init(tileServerURL: String, tiles: [(style: Style, url: String)], tileController: TileController, statsController: StatsController) {
+        self.tileServerURL = tileServerURL
+        self.tiles = tiles.reduce(into: [String: String](), { $0[$1.style.id] = $1.url })
+        self.tileController = tileController
+        self.statsController = statsController
+    }
     
     // MARK: - Routes
     
@@ -135,17 +146,55 @@ internal struct StaticMapController {
     }
     
     private func loadBaseStaticMap(request: Request, path: String, staticMap: StaticMap) -> EventLoopFuture<Void> {
+        if let url = tiles[staticMap.style] {
+            let hasScale = url.contains("{@scale}") || url.contains("{scale}")
+            return generateBaseStaticMap(request: request, path: path, staticMap: staticMap, hasScale: hasScale)
+        }
+
         let scaleString: String
         if staticMap.scale <= 1 {
             scaleString = ""
         } else {
             scaleString = "@\(staticMap.scale)x"
         }
-        
         let tileURL = "\(tileServerURL)/styles/\(staticMap.style)/static/\(staticMap.longitude),\(staticMap.latitude),\(staticMap.zoom)@\(staticMap.bearing ?? 0),\(staticMap.pitch ?? 0)/\(staticMap.width)x\(staticMap.height)\(scaleString).\(staticMap.format ?? "png")"
         return APIUtils.downloadFile(request: request, from: tileURL, to: path).flatMapError { error in
             return request.eventLoop.makeFailedFuture(Abort(.badRequest, reason: "Failed to load base static map: (\(error.localizedDescription))"))
         }
+    }
+
+    private func generateBaseStaticMap(request: Request, path: String, staticMap: StaticMap, hasScale: Bool) -> EventLoopFuture<Void> {
+        let point = sphericalMercator.xy(coord: .init(latitude: staticMap.latitude, longitude: staticMap.longitude), zoom: Int(staticMap.zoom))
+        let xOffsetLeft = max(0, Int(ceil((Double(staticMap.width) - Double(point.xDelta)) / 256)))
+        let xOffsetRight = max(0, Int(ceil((Double(staticMap.width) - (256 - Double(point.xDelta))) / 256)))
+        let yOffsetLeft = max(0, Int(ceil((Double(staticMap.height) - Double(point.yDelta)) / 256)))
+        let yOffsetRight = max(0, Int(ceil((Double(staticMap.height) - (256 - Double(point.yDelta))) / 256)))
+        var futures = [EventLoopFuture<String>]()
+        for xOffset in -xOffsetLeft...xOffsetRight {
+            for yOffset in -yOffsetLeft...yOffsetRight {
+                futures.append(tileController.generateTile(
+                    request: request,
+                    style: staticMap.style,
+                    z: Int(staticMap.zoom),
+                    x: point.x + xOffset,
+                    y: point.y + yOffset,
+                    scale: staticMap.scale,
+                    format: staticMap.format ?? "png"
+                ))
+            }
+        }
+
+        return request.eventLoop.flatten(futures).flatMap( { tilePaths in
+            return ImageUtils.generateBaseStaticMap(
+                request: request,
+                staticMap: staticMap,
+                tilePaths: tilePaths,
+                path: path,
+                offsetX: Int(point.xDelta) + xOffsetLeft * 256,
+                offsetY: Int(point.yDelta) + yOffsetLeft * 256,
+                hasScale: hasScale
+            )
+        })
     }
     
     private func generateFilledStaticMap(request: Request, basePath: String, path: String, staticMap: StaticMap) -> EventLoopFuture<Void> {
@@ -165,7 +214,7 @@ internal struct StaticMapController {
             markerFutures.append(loadMarker(request: request, marker: marker))
         }
         return markerFutures.flatten(on: request.eventLoop).flatMap {
-            return ImageUtils.generateStaticMap(request: request, staticMap: staticMap, basePath: basePath, path: path)
+            return ImageUtils.generateStaticMap(request: request, staticMap: staticMap, basePath: basePath, path: path, sphericalMercator: self.sphericalMercator)
         }
     }
     
