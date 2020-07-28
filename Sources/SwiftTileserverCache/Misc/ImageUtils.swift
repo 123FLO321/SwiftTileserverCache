@@ -150,7 +150,7 @@ public class ImageUtils {
                 realOffsetYPrefix = ""
             }
 
-            let markerPath: String
+            var markerPath: String
             if marker.url.starts(with: "http://") || marker.url.starts(with: "https://") {
                 let markerHashed = marker.url.persistentHash
                 let markerFormat = marker.url.components(separatedBy: ".").last ?? "png"
@@ -158,6 +158,16 @@ public class ImageUtils {
             } else {
                 markerPath = "Markers/\(marker.url)"
             }
+            if let fallbackUrl = marker.fallbackUrl, !FileManager.default.fileExists(atPath: markerPath) {
+                if fallbackUrl.starts(with: "http://") || marker.url.starts(with: "https://") {
+                    let markerHashed = fallbackUrl.persistentHash
+                    let markerFormat = fallbackUrl.components(separatedBy: ".").last ?? "png"
+                    markerPath = "Cache/Marker/\(markerHashed).\(markerFormat)"
+                } else {
+                    markerPath = "Markers/\(fallbackUrl)"
+                }
+            }
+
             markerArguments += [
                 "\\(", markerPath, "-resize", "\(marker.width * UInt16(staticMap.scale))x\(marker.height * UInt16(staticMap.scale))", "\\)",
                 "-gravity", "Center",

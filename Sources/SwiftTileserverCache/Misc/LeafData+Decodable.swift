@@ -20,7 +20,7 @@ extension LeafData: Decodable {
             self = .bool(bool)
         } else if let string = try? container.decode(String.self) {
             if string == "null" {
-                self = .null
+                self = .trueNil
             } else if (string.contains("[") || string.contains("{")),
                 let data = string.data(using: .utf8) {
                 if let array = try? JSONDecoder().decode([LeafData].self, from: data) {
@@ -38,7 +38,7 @@ extension LeafData: Decodable {
         } else if let dictionary = try? container.decode([String: LeafData].self) {
             self = .dictionary(dictionary)
         } else if container.decodeNil() {
-            self = .null
+            self = .trueNil
         } else {
             throw Abort(.badRequest, reason: "Unsupported data type in parameters")
         }

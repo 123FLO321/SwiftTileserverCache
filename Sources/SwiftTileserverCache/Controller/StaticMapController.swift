@@ -217,27 +217,37 @@ internal class StaticMapController {
             return ImageUtils.generateStaticMap(request: request, staticMap: staticMap, basePath: basePath, path: path, sphericalMercator: self.sphericalMercator)
         }
     }
-    
+
     private func loadMarker(request: Request, marker: Marker) -> EventLoopFuture<Void> {
-        if marker.url.starts(with: "http://") || marker.url.starts(with: "https://") {
-            guard URL(string: marker.url) != nil else {
-                return request.eventLoop.future(error: Abort(.badRequest, reason: "Marker url is not valid: \(marker.url)"))
+        var future = loadMarker(request: request, url: marker.url)
+        if let fallbackUrl = marker.fallbackUrl {
+            future = future.flatMapError { error in
+                self.loadMarker(request: request, url: fallbackUrl)
             }
-            let markerHashed = marker.url.persistentHash
-            let markerFormat = marker.url.components(separatedBy: ".").last ?? "png"
+        }
+        return future
+    }
+
+    private func loadMarker(request: Request, url: String) -> EventLoopFuture<Void> {
+        if url.starts(with: "http://") || url.starts(with: "https://") {
+            guard URL(string: url) != nil else {
+                return request.eventLoop.future(error: Abort(.badRequest, reason: "Marker url is not valid: \(url)"))
+            }
+            let markerHashed = url.persistentHash
+            let markerFormat = url.components(separatedBy: ".").last ?? "png"
             let path = "Cache/Marker/\(markerHashed).\(markerFormat)"
-            let domain = marker.url.components(separatedBy: "//").last?.components(separatedBy: "/").first ?? "?"
+            let domain = url.components(separatedBy: "//").last?.components(separatedBy: "/").first ?? "?"
             guard !FileManager.default.fileExists(atPath: path) else {
                 statsController.markerServed(new: false, path: path, domain: domain)
                 return request.eventLoop.future()
             }
-            return APIUtils.downloadFile(request: request, from: marker.url, to: path).always { _ in
+            return APIUtils.downloadFile(request: request, from: url, to: path).always { _ in
                 self.statsController.markerServed(new: true, path: path, domain: domain)
             }.flatMapError { error in
-                return request.eventLoop.makeFailedFuture(Abort(.badRequest, reason: "Failed to load marker: \(marker.url) (\(error.localizedDescription))"))
+                return request.eventLoop.makeFailedFuture(Abort(.badRequest, reason: "Failed to load marker: \(url) (\(error.localizedDescription))"))
             }
         } else {
-            let path = "Markers/\(marker.url)"
+            let path = "Markers/\(url)"
             guard !path.contains("..") else {
                 return request.eventLoop.future(error: Abort(.badRequest, reason: "Path is not allowed to contain \"..\""))
             }

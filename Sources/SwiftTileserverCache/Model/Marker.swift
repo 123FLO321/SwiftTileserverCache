@@ -9,6 +9,7 @@ import Foundation
 
 public struct Marker: Codable, Hashable, Drawable {
     public var url: String
+    public var fallbackUrl: String?
     public var height: UInt16
     public var width: UInt16
     public var latitude: Double
@@ -17,6 +18,6 @@ public struct Marker: Codable, Hashable, Drawable {
     public var yOffset: Int16?
         
     enum CodingKeys: String, CodingKey {
-        case url, height, width, latitude, longitude, xOffset = "x_offset", yOffset = "y_offset"
+        case url, fallbackUrl = "fallback_url", height, width, latitude, longitude, xOffset = "x_offset", yOffset = "y_offset"
     }
 }
