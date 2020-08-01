@@ -62,7 +62,7 @@ internal class TileController {
             return request.eventLoop.makeFailedFuture(Abort(.badRequest, reason: "Failed to load tile (\(error.localizedDescription))"))
         }.always { _ in
             request.application.logger.info("Served a generated tile")
-            self.statsController.tileServed(new: false, path: path, style: style)
+            self.statsController.tileServed(new: true, path: path, style: style)
         }.transform(to: path)
     }
 
