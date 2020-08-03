@@ -88,7 +88,6 @@ public class ImageUtils {
         }
     }
 
-    
     public static func generateStaticMap(request: Request, staticMap: StaticMap, basePath: String, path: String, sphericalMercator: SphericalMercator) -> EventLoopFuture<Void> {
         var polygonArguments = [String]()
         for polygon in staticMap.polygons ?? [] {
@@ -136,7 +135,12 @@ public class ImageUtils {
                 extraY: marker.yOffset ?? 0,
                 sphericalMercator: sphericalMercator
             )
-            
+
+            if (abs(realOffset.x) > (staticMap.width + marker.width) * UInt16(staticMap.scale) / 2) ||
+               (abs(realOffset.y) > (staticMap.height + marker.height) * UInt16(staticMap.scale) / 2) {
+                continue
+            }
+
             let realOffsetXPrefix: String
             if realOffset.x >= 0 {
                 realOffsetXPrefix = "+"
