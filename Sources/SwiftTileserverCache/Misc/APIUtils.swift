@@ -12,12 +12,14 @@ public class APIUtils {
     
     private init() {}
     
-    public static func downloadFile(request: Request, from: String, to: String) -> EventLoopFuture<Void> {
+    public static func downloadFile(request: Request, from: String, to: String, type: String?) -> EventLoopFuture<Void> {
         let headers = HTTPHeaders([("User-Agent", "TileserverCache")])
         return request.client.get(URI(string: from), headers: headers).flatMap { response in
             let errorReason: String
             if response.status.code >= 200 && response.status.code < 300 {
-                if let body = response.body, body.readableBytes != 0 {
+                if let type = type, response.content.contentType?.type != type {
+                    errorReason = "Failed to load file. Got invalid type: \(request.content.contentType?.description ?? "non")"
+                } else if let body = response.body, body.readableBytes != 0 {
                     return request.application.fileio.openFile(
                         path: to,
                         mode: .write,

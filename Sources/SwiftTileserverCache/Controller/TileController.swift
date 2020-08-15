@@ -58,7 +58,7 @@ internal class TileController {
         } else {
             tileURL = "\(tileServerURL)/styles/\(style)/\(z)/\(x)/\(y)\(scaleString).\(format)"
         }
-        return APIUtils.downloadFile(request: request, from: tileURL, to: path).flatMapError { error in
+        return APIUtils.downloadFile(request: request, from: tileURL, to: path, type: "image").flatMapError { error in
             return request.eventLoop.makeFailedFuture(Abort(.badRequest, reason: "Failed to load tile (\(error.localizedDescription))"))
         }.always { _ in
             request.application.logger.info("Served a generated tile")

@@ -158,7 +158,7 @@ internal class StaticMapController {
             scaleString = "@\(staticMap.scale)x"
         }
         let tileURL = "\(tileServerURL)/styles/\(staticMap.style)/static/\(staticMap.longitude),\(staticMap.latitude),\(staticMap.zoom)@\(staticMap.bearing ?? 0),\(staticMap.pitch ?? 0)/\(staticMap.width)x\(staticMap.height)\(scaleString).\(staticMap.format ?? "png")"
-        return APIUtils.downloadFile(request: request, from: tileURL, to: path).flatMapError { error in
+        return APIUtils.downloadFile(request: request, from: tileURL, to: path, type: "image").flatMapError { error in
             return request.eventLoop.makeFailedFuture(Abort(.badRequest, reason: "Failed to load base static map: (\(error.localizedDescription))"))
         }
     }
@@ -241,7 +241,7 @@ internal class StaticMapController {
                 statsController.markerServed(new: false, path: path, domain: domain)
                 return request.eventLoop.future()
             }
-            return APIUtils.downloadFile(request: request, from: url, to: path).always { _ in
+            return APIUtils.downloadFile(request: request, from: url, to: path, type: "image").always { _ in
                 self.statsController.markerServed(new: true, path: path, domain: domain)
             }.flatMapError { error in
                 return request.eventLoop.makeFailedFuture(Abort(.badRequest, reason: "Failed to load marker: \(url) (\(error.localizedDescription))"))
