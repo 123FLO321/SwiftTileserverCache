@@ -123,6 +123,39 @@ public class ImageUtils {
                 "-draw", "\"polygon \(polygonPath)\""
             ]
         }
+
+        var circleArguments = [String]()
+        for circle in staticMap.circles ?? [] {
+            let coord = Coordinate(latitude: circle.latitude, longitude: circle.longitude)
+            let point = getRealOffset(
+                at: coord,
+                relativeTo: Coordinate(latitude: staticMap.latitude, longitude: staticMap.longitude),
+                zoom: staticMap.zoom,
+                scale: staticMap.scale,
+                extraX: 0,
+                extraY: 0,
+                sphericalMercator: sphericalMercator
+            )
+            let radius = getRealOffset(
+                at: coord,
+                relativeTo: coord.coordinate(at: circle.radius, facing: 0),
+                zoom: staticMap.zoom,
+                scale: staticMap.scale,
+                extraX: 0,
+                extraY: 0,
+                sphericalMercator: sphericalMercator
+            ).y
+            let x = point.x + Int(staticMap.width * UInt16(staticMap.scale) / 2)
+            let y = point.y + Int(staticMap.height * UInt16(staticMap.scale) / 2)
+
+            circleArguments += [
+                "-strokewidth", "\(circle.strokeWidth)",
+                "-fill", circle.fillColor.bashEncoded,
+                "-stroke", circle.strokeColor.bashEncoded,
+                "-gravity", "Center",
+                "-draw", "\"circle \(x),\(y) \(x),\(y+radius)\""
+            ]
+        }
         
         var markerArguments = [String]()
         for marker in staticMap.markers ?? [] {
@@ -186,6 +219,7 @@ public class ImageUtils {
                 try shellOut(to: ImageUtils.imagemagickConvertCommand, arguments: [
                     basePath] +
                     polygonArguments +
+                    circleArguments +
                     markerArguments +
                     [path
                 ])

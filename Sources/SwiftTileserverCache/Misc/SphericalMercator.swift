@@ -10,6 +10,24 @@ import Foundation
 public struct Coordinate {
     public var latitude: Double
     public var longitude: Double
+
+
+    // Source: https://github.com/mapbox/turf-swift
+    public func coordinate(at distance: Double, facing direction: Double) -> Coordinate {
+        let distance = distance / 6_373_000.0
+        let direction = direction
+        let latitude = self.latitude * .pi / 180.0
+        let longitude = self.longitude * .pi / 180.0
+        let otherLatitude = asin(
+            sin(latitude) * cos(distance) + cos(latitude) * sin(distance) * cos(direction)
+        )
+        let otherLongitude = longitude + atan2(
+            sin(direction) * sin(distance) * cos(latitude),
+            cos(distance) - sin(latitude) * sin(otherLatitude)
+        )
+        return Coordinate(latitude: otherLatitude * 180.0 / .pi, longitude: otherLongitude * 180.0 / .pi)
+    }
+
 }
 
 public class SphericalMercator {

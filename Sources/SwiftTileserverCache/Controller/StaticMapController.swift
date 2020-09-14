@@ -74,14 +74,18 @@ internal class StaticMapController {
     private func handleRequest(request: Request, staticMap: StaticMap) -> EventLoopFuture<Response> {
         let path = staticMap.path
         if !FileManager.default.fileExists(atPath: path) {
-            return generateStaticMapAndResponse(request: request, path: path, staticMap: staticMap).always {_ in
-                request.application.logger.info("Served a generated static map")
-                self.statsController.staticMapServed(new: true, path: path, style: staticMap.style)
+            return generateStaticMapAndResponse(request: request, path: path, staticMap: staticMap).always { result in
+                if case .success = result {
+                    request.application.logger.info("Served a generated static map")
+                    self.statsController.staticMapServed(new: true, path: path, style: staticMap.style)
+                }
             }
         } else {
-            return ResponseUtils.generateResponse(request: request, staticMap: staticMap, path: path).always {_ in
-                request.application.logger.info("Served a cached static map")
-                self.statsController.staticMapServed(new: false, path: path, style: staticMap.style)
+            return ResponseUtils.generateResponse(request: request, staticMap: staticMap, path: path).always { result in
+                if case .success = result {
+                    request.application.logger.info("Served a cached static map")
+                    self.statsController.staticMapServed(new: false, path: path, style: staticMap.style)
+                }
             }
         }
     }
@@ -98,8 +102,10 @@ internal class StaticMapController {
             }
         }
         let staticMap: StaticMap? = nil
-        return ResponseUtils.generateResponse(request: request, staticMap: staticMap, path: path).always {_ in
-            request.application.logger.info("Served a pregenerate static map")
+        return ResponseUtils.generateResponse(request: request, staticMap: staticMap, path: path).always { result in
+            if case .success = result {
+                request.application.logger.info("Served a pregenerate static map")
+            }
         }
     }
     
@@ -114,7 +120,8 @@ internal class StaticMapController {
             } catch {
                 var bufferError = buffer
                 let string = bufferError.readString(length: bufferVar.readableBytes) ?? ""
-                let reason = "Template Invalid (\(error.localizedDescription)) [\(string)]"
+                let reason = "Template \(template) Invalid (\(error.localizedDescription))"
+                request.application.logger.error("\(reason)\n\(string)")
                 return request.eventLoop.future(error: Abort(.internalServerError, reason: reason))
             }
         }
@@ -130,18 +137,15 @@ internal class StaticMapController {
         var baseStaticMap = staticMap
         baseStaticMap.markers = nil
         baseStaticMap.polygons = nil
+        baseStaticMap.circles = nil
         let basePath = baseStaticMap.path
         
         if !FileManager.default.fileExists(atPath: basePath) {
             return loadBaseStaticMap(request: request, path: basePath, staticMap: baseStaticMap).flatMap {
-                return self.generateFilledStaticMap(request: request, basePath: basePath, path: path, staticMap: staticMap).always { _ in
-                    self.statsController.staticMapServed(new: true, path: basePath, style: staticMap.style)
-                }
+                return self.generateFilledStaticMap(request: request, basePath: basePath, path: path, staticMap: staticMap)
             }
         } else {
-            return self.generateFilledStaticMap(request: request, basePath: basePath, path: path, staticMap: staticMap).always { _ in
-                self.statsController.staticMapServed(new: false, path: basePath, style: staticMap.style)
-            }
+            return self.generateFilledStaticMap(request: request, basePath: basePath, path: path, staticMap: staticMap)
         }
     }
     
@@ -202,6 +206,9 @@ internal class StaticMapController {
         if let polygons = staticMap.polygons {
             drawables += polygons
         }
+        if let circles = staticMap.circles {
+            drawables += circles
+        }
         if let markers = staticMap.markers {
             drawables += markers
         }
@@ -241,8 +248,10 @@ internal class StaticMapController {
                 statsController.markerServed(new: false, path: path, domain: domain)
                 return request.eventLoop.future()
             }
-            return APIUtils.downloadFile(request: request, from: url, to: path, type: "image").always { _ in
-                self.statsController.markerServed(new: true, path: path, domain: domain)
+            return APIUtils.downloadFile(request: request, from: url, to: path, type: "image").always { result in
+                if case .success = result {
+                    self.statsController.markerServed(new: true, path: path, domain: domain)
+                }
             }.flatMapError { error in
                 return request.eventLoop.makeFailedFuture(Abort(.badRequest, reason: "Failed to load marker: \(url) (\(error.localizedDescription))"))
             }

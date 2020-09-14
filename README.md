@@ -50,7 +50,8 @@ Example:
   "bearing": double?,
   "pitch": double?,
   "markers": [Marker]?,
-  "polygons": [Geofence]?
+  "polygons": [Geofence]?,
+  "circles": [Circle]?"
 }
 ```
 
@@ -118,6 +119,20 @@ Example:
     [double, double],
     ...
   ]
+}
+```
+
+### Circle
+Circle JSON used in StaticMap:
+Example:
+```
+{
+  "fill_color": string (imagemagick color string),
+  "stroke_color": string (imagemagick color string),
+  "stroke_width": int,
+  "radius": double,
+  "latitude": double,
+  "longitude": double
 }
 ```
 

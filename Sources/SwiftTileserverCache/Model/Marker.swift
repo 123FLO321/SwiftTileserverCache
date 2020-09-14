@@ -1,6 +1,6 @@
 //
-//  File.swift
-//  
+//  Marker.swift
+//  SwiftTileserverCache
 //
 //  Created by Florian Kostenzer on 01.11.19.
 //

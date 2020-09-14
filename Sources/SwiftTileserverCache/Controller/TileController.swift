@@ -60,9 +60,11 @@ internal class TileController {
         }
         return APIUtils.downloadFile(request: request, from: tileURL, to: path, type: "image").flatMapError { error in
             return request.eventLoop.makeFailedFuture(Abort(.badRequest, reason: "Failed to load tile (\(error.localizedDescription))"))
-        }.always { _ in
-            request.application.logger.info("Served a generated tile")
-            self.statsController.tileServed(new: true, path: path, style: style)
+        }.always { result in
+            if case .success = result {
+                request.application.logger.info("Served a generated tile")
+                self.statsController.tileServed(new: true, path: path, style: style)
+            }
         }.transform(to: path)
     }
 
