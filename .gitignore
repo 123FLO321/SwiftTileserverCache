@@ -6,4 +6,6 @@ xcuserdata/
 Package.resolved
 /Cache
 /Templates
+/Markers
+/TileServer
 .swiftpm/

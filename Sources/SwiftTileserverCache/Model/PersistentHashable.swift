@@ -6,17 +6,25 @@
 //
 
 import Foundation
-import Cryptor
+import Vapor
 
 public protocol PersistentHashable {
-    var uniqueHash: String { get }
+    var persistentHash: String { get }
 }
 
 extension PersistentHashable where Self: Codable {
-    public var uniqueHash: String {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = .sortedKeys
-        let json = try! encoder.encode(self)
-        return Data(Digest(using: .md5).update(data: json)!.final()).base64EncodedString().replacingOccurrences(of: "/", with: "_")
+    public var persistentHash: String {
+        let encoder = JSONEncoder.custom(format: .sortedKeys)
+        let data = try! encoder.encode(self)
+        let digest = SHA256.hash(data: data)
+        return Data(digest).base64EncodedString().replacingOccurrences(of: "/", with: "_")
+    }
+}
+
+extension String: PersistentHashable {
+    public var persistentHash: String {
+        let data = self.data(using: .utf8)!
+        let digest = SHA256.hash(data: data)
+        return Data(digest).base64EncodedString().replacingOccurrences(of: "/", with: "_")
     }
 }

@@ -1,21 +1,34 @@
-FROM swift:5.1
-MAINTAINER 0815flo
-LABEL Description="Docker image for running Swift Tileserver Cache."
+# ================================
+# Build image
+# ================================
+FROM swift:5.2 as build
+WORKDIR /build
 
-RUN apt-get update && apt-get install -y sudo openssl libssl-dev libcurl4-openssl-dev
+# Copy required folders into container
+COPY Sources Sources
+COPY Tests Tests
+COPY Resources Resources
+COPY Package.swift Package.swift
 
-RUN apt-get -y update && apt-get install -y imagemagick && cp /usr/bin/convert /usr/local/bin
+# Compile with optimizations
+RUN swift build \
+    --enable-test-discovery \
+    -c release \
+    -Xswiftc -g
 
-# Expose default port
-EXPOSE 9000
-
-RUN mkdir /SwiftTileserverCache
+# ================================
+# Run image
+# ================================
+FROM swift:5.2
 WORKDIR /SwiftTileserverCache
 
-ADD Sources /SwiftTileserverCache/Sources
-ADD Tests /SwiftTileserverCache/Tests
-ADD Package.swift /SwiftTileserverCache
-RUN cd /SwiftTileserverCache && swift build -c release
-RUN cp .build/release/SwiftTileserverCacheApp .
+# Install imagemagick
+RUN apt-get -y update && apt-get install -y imagemagick
 
-CMD ["./SwiftTileserverCacheApp"]
+# Copy build artifacts
+COPY --from=build /build/.build/release /SwiftTileserverCache
+# Copy Resources
+COPY --from=build /build/Resources /SwiftTileserverCache/Resources
+
+ENTRYPOINT ["./SwiftTileserverCacheApp"]
+CMD ["serve", "--env", "production", "--log", "info", "--hostname", "0.0.0.0", "--port", "9000"]

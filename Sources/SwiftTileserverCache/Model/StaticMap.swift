@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import Cryptor
 
 public struct StaticMap: Codable, Hashable, PersistentHashable {
     public var style: String
@@ -21,4 +20,9 @@ public struct StaticMap: Codable, Hashable, PersistentHashable {
     public var pitch: Double?
     public var markers: [Marker]?
     public var polygons: [Polygon]?
+    public var circles: [Circle]?
+
+    internal var path: String {
+        return "Cache/Static/\(persistentHash).\(format ?? "png")"
+    }
 }

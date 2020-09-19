@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>SwiftTileserver Cache</title>
+</head>
+<body>
+    <h1 align="center">Swift Tileserver Cache</h1><br>
+    <br><h2 align="center">Tiles Cache Hit-Rate (since restart)</h2>
+    #for(tileHitRatio in tileHitRatios):
+        <p align="center"><b>#(tileHitRatio.key)</b>: #(tileHitRatio.value)</p>
+    #endfor
+    <br><h2 align="center">Static Map Cache Hit-Rate (since restart)</h2>
+    #for(staticMapHitRatio in staticMapHitRatios):
+        <p align="center"><b>#(staticMapHitRatio.key)</b>: #(staticMapHitRatio.value)</p>
+    #endfor
+    <br><h2 align="center">Marker Cache Hit-Rate (since restart)</h2>
+    #for(markerHitRatio in markerHitRatios):
+        <p align="center"><b>#(markerHitRatio.key)</b>: #(markerHitRatio.value)</p>
+    #endfor
+</body>

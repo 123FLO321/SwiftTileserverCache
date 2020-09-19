@@ -1,55 +1,37 @@
-// swift-tools-version:5.1
+// swift-tools-version:5.2
 
 import PackageDescription
 
 let package = Package(
     name: "SwiftTileserverCache",
     platforms: [
-        .macOS(.v10_13) // linux does not yet have runntime availability checks so this doesn't apply to linux yet
-    ],
-    products: [
-        .executable(
-            name: "SwiftTileserverCacheApp",
-            targets: [
-                "SwiftTileserverCacheApp"
-            ]
-        ),
+        .macOS(.v10_15) // linux does not yet have runntime availability checks so this doesn't apply to linux yet
     ],
     dependencies: [
-        .package(url: "https://github.com/IBM-Swift/Kitura", .upToNextMinor(from: "2.7.0")),
-        .package(url: "https://github.com/123FLO321/FileKit.git", from: "0.0.3"),
-        .package(url: "https://github.com/IBM-Swift/LoggerAPI", .upToNextMinor(from: "1.9.0")),
-        .package(url: "https://github.com/IBM-Swift/HeliumLogger", .upToNextMinor(from: "1.8.1")),
-        .package(url: "https://github.com/IBM-Swift/BlueCryptor", .upToNextMinor(from: "1.0.0")),
-        .package(url: "https://github.com/ianpartridge/swift-backtrace", .upToNextMinor(from: "1.1.1")),
-        .package(url: "https://github.com/stencilproject/Stencil", .upToNextMinor(from: "0.13.0")),
-        .package(url: "https://github.com/JohnSundell/ShellOut", .upToNextMinor(from: "2.3.0"))
+        .package(url: "https://github.com/vapor/vapor", from: "4.0.0"),
+        .package(url: "https://github.com/vapor/leaf", from: "4.0.0-rc"),
+        .package(url: "https://github.com/JohnSundell/ShellOut", from: "2.3.0")
     ],
     targets: [
         .target(
             name: "SwiftTileserverCache",
             dependencies: [
-                "Kitura",
-                "FileKit",
-                "LoggerAPI",
-                "Cryptor",
-                "Stencil",
-                "ShellOut"
+                .product(name: "Vapor", package: "vapor"),
+                .product(name: "Leaf", package: "leaf"),
+                .product(name: "ShellOut", package: "ShellOut")
             ]
         ),
         .target(
             name: "SwiftTileserverCacheApp",
             dependencies: [
-                "SwiftTileserverCache",
-                "HeliumLogger",
-                "Backtrace"
+                .target(name: "SwiftTileserverCache"),
             ]
         ),
         .testTarget(
             name: "SwiftTileserverCacheTests",
             dependencies: [
-                "SwiftTileserverCache"
+                .target(name: "SwiftTileserverCache"),
             ]
-        ),
+        )
     ]
 )
