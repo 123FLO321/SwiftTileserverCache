@@ -4,9 +4,10 @@
       "root": "/usr/src/app/node_modules/tileserver-gl-styles",
       "fonts": "/data/Fonts",
       "styles": "/data/Styles",
+      "sprites": "/data/Styles",
       "mbtiles": "/data/Datasets"
     },
-	"serveAllFonts": true,
+    "serveAllFonts": true,
     "serveAllStyles": true,
     "serveStaticMaps": true
   },
