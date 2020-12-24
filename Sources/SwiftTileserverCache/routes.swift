@@ -20,6 +20,10 @@ func routes(_ app: Application) throws {
 
     let statsController = StatsController(fileToucher: FileToucher())
 
+    if let maxBodySize = Environment.get("MAX_BODY_SIZE") {
+        app.routes.defaultMaxBodySize = ByteCount(stringLiteral: maxBodySize)
+    }
+
     let stylesController = StylesController(tileServerURL: tileServerURL, externalStyles: externalStyles, folder: "TileServer/Styles")
     app.get("styles", use: stylesController.get)
 
@@ -50,13 +54,13 @@ func routes(_ app: Application) throws {
     protected.webSocket("api", "datasets", "delete", onUpgrade: datasetController.delete)
 
     let fontsController = FontsController(folder: "TileServer/Fonts", tempFolder: "Temp")
-    protected.on(.POST, "api", "fonts", "add", body: .collect(maxSize: "1mb"), use: fontsController.add)
+    protected.on(.POST, "api", "fonts", "add", body: .collect(maxSize: "64mb"), use: fontsController.add)
     protected.delete("api", "fonts", "delete", ":name", use: fontsController.delete)
 
     protected.post("api", "styles", "external", "add", use: stylesController.addExternal)
     protected.delete("api", "styles", "external", ":id", use: stylesController.deleteExternal)
 
-    protected.on(.POST, "api", "styles", "local", "add", body: .collect(maxSize: "1mb"), use: stylesController.addLocal)
+    protected.on(.POST, "api", "styles", "local", "add", body: .collect(maxSize: "64mb"), use: stylesController.addLocal)
     protected.delete("api", "styles", "local", ":id", use: stylesController.deleteLocal)
 
     let templatesController = TemplatesController(folder: "Templates", staticMapController: staticMapController, multiStaticMapController: multiStaticMapController)
