@@ -1,0 +1,54 @@
+#extend("Resources/Views/Base"):
+    #export("stylesheets"):
+    #endexport
+    #export("scripts"):
+        <script>
+            function addStyle() {
+                const url = $('\#url').val()
+                const name = $('\#name').val()
+                const id = $('\#id').val()
+                if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                    alert("Invalid Tile URL: Requires http or https!")
+                } else if (!url.includes("{x}") || !url.includes("{y}") || !url.includes("{z}")) {
+                    alert("Invalid Tile URL: {x}, {y} and {z} are required!")
+                } else {
+                    data = JSON.stringify({url, name, id, external: true})
+                    $.ajax({
+                        type: "POST",
+                        url: "/admin/api/styles/external/add",
+                        data: data,
+                        contentType: "application/json",
+                        success: function(id) {
+                            window.location = '/admin/styles'
+                        },
+                        error: function(data, error, errorText) {
+                            alert('Failed to add Style: ' + (data.responseJSON ? data.responseJSON.reason : errorText))
+                        }
+                    })
+                }
+                return false
+            }
+        </script>
+    #endexport
+    #export("content"):
+        <h1 align="center">Add External Style</h1>
+        <br>
+        <div style="width:90%; margin-left: 5%; mergin-right: 5%">
+            <form onsubmit="return addStyle()">
+                <div class="form-group">
+                    Style Name
+                    <input id="name" type="text" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    Style ID
+                    <input id="id" type="text" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    Tile URL
+                    <input id="url" type="text" class="form-control" required>
+                </div>
+                <button id="submit" type="submit" class="btn btn-primary float-right">Add External Style</button>
+            </form>
+        </div>
+    #endexport
+#endextend

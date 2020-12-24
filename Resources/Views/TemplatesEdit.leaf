@@ -1,0 +1,175 @@
+#extend("Resources/Views/Base"):
+    #export("stylesheets"):
+        <style>
+            \#preview {
+                display: block;
+                width: 100%;
+                height: auto;
+                padding: 0;
+            }
+            \#content {
+                min-height: 500px;
+                overflow: auto;
+                padding: 0;
+            }
+            \#test-data {
+                min-height: 100px;
+                overflow: auto;
+                padding: 0;
+            }
+        </style>
+    #endexport
+    #export("scripts"):
+        <script>
+            var requestId = 0
+            var testDataEditor
+            var contentEditor
+            var templateName = '#(templateName)'
+
+            $(function() {
+                ace.config.set(
+                    "basePath",
+                    "https://cdn.jsdelivr.net/npm/ace-builds@1.4.12/src-noconflict/"
+                )
+
+                const JSONMode = ace.require("ace/mode/json").Mode
+
+                testDataEditor = ace.edit("test-data")
+                testDataEditor.session.setMode(new JSONMode())
+                testDataEditor.setOptions({
+                    maxLines: Infinity
+                })
+                testDataEditor.on('change', function() {
+                    updatePreview(false)
+                })
+
+                contentEditor = ace.edit("content")
+                contentEditor.session.setMode(new JSONMode())
+                contentEditor.setOptions({
+                    maxLines: Infinity,
+                    useWorker: false
+                })
+                contentEditor.on('change', function() {
+                    updatePreview(true)
+                })
+
+                let oldTestData = window.localStorage.getItem("test-data-"+templateName)
+                if (oldTestData) {
+                    testDataEditor.setValue(oldTestData, -1)
+                }
+            });
+
+            function updatePreview(templateChanges) {
+                if (templateChanges) {
+                    window.onbeforeunload = function() {
+                        return 'Template has unsaved changes!'
+                    }
+                }
+
+                const testData = testDataEditor.getValue()
+                if (!testData) { return }
+                const content = contentEditor.getValue()
+                if (!content) { return }
+                window.localStorage.setItem("test-data-"+templateName, testData)
+
+                const mode = content.includes('"grid"') ? 'MultiStaticMap' : 'StaticMap'
+                showTextPreview('Loading Preview...')
+                let data
+                try {
+                    data = JSON.stringify({template: content, context: JSON.parse(testData), mode})
+                } catch {
+                    return showTextPreview('Failed to render preview:\nTest Data is invalid JSON!')
+                }
+                requestId += 1
+                let targetRequestId = requestId
+                $.ajax({
+                    type: "POST",
+                    url: "/admin/api/templates/preview?pregenerate=true",
+                    data: data,
+                    contentType: "application/json",
+                    success: function(id) {
+                        if (targetRequestId === requestId) {
+                            showPreview(id, mode)
+                        }
+                    },
+                    error: function(data, error, errorText) {
+                        if (targetRequestId === requestId) {
+                            showTextPreview('Failed to render preview:\n' + (data.responseJSON ? data.responseJSON.reason : errorText))
+                        }
+                    }
+                })
+            }
+
+            function showTextPreview(text) {
+                $('\#preview-error').html(text)
+                $('\#preview-error').prop("rows", text.split(/\r\n|\r|\n/).length)
+                $('\#preview-error').show()
+                $('\#preview').hide()
+            }
+
+            function showPreview(id, mode) {
+                $('\#preview').prop("src", '/' + mode.toLowerCase() + '/pregenerated/'+id)
+                $('\#preview-error').hide()
+                $('\#preview').show()
+            }
+
+            function saveTemplate() {
+                const content = contentEditor.getValue()
+                const testData = testDataEditor.getValue()
+                const name = $('\#name').val()
+                const oldName = templateName
+
+                window.localStorage.setItem("test-data-"+name, testData)
+                data = JSON.stringify({template: content, name, oldName})
+                $.ajax({
+                    type: "POST",
+                    url: "/admin/api/templates/save",
+                    data: data,
+                    contentType: "application/json",
+                    success: function(id) {
+                        window.onbeforeunload = null
+                        window.location = '/admin/templates'
+                    },
+                    error: function(data, error, errorText) {
+                        alert('Failed to save Template: ' + (data.responseJSON ? data.responseJSON.reason : errorText))
+                    }
+                })
+                return false
+            }
+        </script>
+    #endexport
+    #export("content"):
+        <h1 align="center">#(pageName)</h1>
+        <br>
+        <div style="width:90%; margin-left: 5%; mergin-right: 5%">
+            <div class="container-fluid">
+                <form onsubmit="return saveTemplate()">
+                    <div class="row">
+                        <div class="col">
+                            <div class="form-group">
+                                Template Name
+                                <input id="name" maxlength="50" type="text" class="form-control" name="name" value="#(templateName)" required>
+                            </div>
+                            <div class="form-group">
+                                Template Content
+                                <div id="content" class="form-control" name="content">#(templateContent)</div>
+                            </div>
+                            <button id="submit" type="submit" class="btn btn-primary float-right">Save Template</button>
+                        </div>
+                        <div class="col">
+                            <div class="form-group">
+                                Test Data
+                                <div id="test-data" class="form-control" name="test-data"></div>
+                            </div>
+                            <div class="form-group">
+                                <span>Preview</span>
+                                <img id="preview" style="display: none" class="form-control">
+                                <textarea id="preview-error" rows="1" class="form-control" name="content" readonly>Enter Test Data to show preview!</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    #endexport
+#endextend

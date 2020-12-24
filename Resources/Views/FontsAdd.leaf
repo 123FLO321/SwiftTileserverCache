@@ -1,0 +1,75 @@
+#extend("Resources/Views/Base"):
+    #export("stylesheets"):
+    #endexport
+    #export("scripts"):
+        <script>
+            var files
+            var index
+
+            function addFonts() {
+                files = $('\#fonts').prop('files')
+                index = 0
+                uploadAll()
+                return false
+            }
+
+            function uploadAll() {
+                startedLoading(`Processing ${index}/${files.length}`)
+                let data = new FormData();
+                data.append("file", files[index]);
+                $.ajax({
+                    type: "POST",
+                    data: data,
+                    url: "/admin/api/fonts/add",
+                    processData: false,
+                    contentType: false,
+                    success: function(id) {
+                        index++
+                        if (index === files.length) {
+                            window.location = '/admin/fonts'
+                        } else {
+                            uploadAll()
+                        }
+                    },
+                    error: function(data, error, errorText) {
+                        stoppedLoading('Failed to upload Font: ' + (data.responseJSON ? data.responseJSON.reason : errorText))
+                    }
+                })
+            }
+
+            function setProgress(text, percentage) {
+                $('\#progress-text').html(text)
+            }
+
+            function startedLoading(text) {
+                $('\#progress-text').html(text)
+                $('\#submit').prop('disabled', true)
+                $('\#progress').show()
+            }
+
+            function stoppedLoading(error) {
+                $('\#submit').prop('disabled', false)
+                $('\#progress').hide()
+                alert(error)
+            }
+        </script>
+    #endexport
+    #export("content"):
+        <h1 align="center">Add Fonts</h1>
+        <br>
+        <div style="width:90%; margin-left: 5%; mergin-right: 5%">
+            <form onsubmit="return addFonts()">
+                <div class="form-group">
+                    Fonts
+                    <input id="fonts" type="file" class="form-control" accept=".otf,.ttf" multiple required>
+                </div>
+                <button id="submit" type="submit" class="btn btn-primary float-right">Add Fonts</button>
+            </form>
+        </div>
+        <div id="progress" class="progress" style="width:90%; margin-left: 5%; mergin-right: 5%; margin-top: 70px; display: none;">
+          <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">
+            <span id="progress-text"></span>
+          </div>
+        </div>
+    #endexport
+#endextend

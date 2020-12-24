@@ -14,7 +14,7 @@ class IndexTag: LeafTag {
         guard ctx.parameters.count == 2,
           let array = ctx.parameters.first?.array,
           let index = ctx.parameters.last?.int else {
-            throw "format tag rquires exactly 2 Argument: (array: [LeafData], index: int)"
+            throw Abort(.badRequest, reason: "index tag rquires exactly 2 Argument: (array: [LeafData], index: int)")
         }
         return array[index]
     }
