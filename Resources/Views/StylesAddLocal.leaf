@@ -91,7 +91,7 @@
                     <input id="id" type="text" class="form-control" required>
                 </div>
                 <div class="form-group">
-                    Files (Required: style.json, sprite.json, sprite.json, sprite.png, sprite@2x.json, sprite@2x.png)
+                    Files (<a target="_blank" href="https://maputnik.github.io/editor/#17/#(previewLatitude)/#(previewLongitude)">Design Custom Styles</a>) [Required: style.json, sprite.json, sprite.json, sprite.png, sprite@2x.json, sprite@2x.png]
                     <input id="files" type="file" class="form-control" accept=".json,.png" multiple required>
                 </div>
                 <button id="submit" type="submit" class="btn btn-primary float-right">Add Style</button>
