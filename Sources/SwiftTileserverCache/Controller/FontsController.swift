@@ -15,7 +15,7 @@ internal class FontsController {
     }
 
     #if os(macOS)
-    private static let buildGlyphsCommand = "/usr/local/opt/node@12/bin/node /usr/local/bin/build-glyphs"
+    private static let buildGlyphsCommand = "/usr/local/opt/node/bin/node /usr/local/bin/build-glyphs"
     #else
     private static let buildGlyphsCommand = "/usr/local/bin/build-glyphs"
     #endif
@@ -36,7 +36,7 @@ internal class FontsController {
     internal func add(request: Request) throws -> EventLoopFuture<Response> {
         let font = try request.content.decode(SaveFont.self)
         let tempFile = "\(tempFolder)/\(UUID().uuidString).\(font.file.extension ?? "tff")"
-        let name = font.file.filename.split(separator: ".").dropLast().joined(separator: ".")
+        let name = font.file.filename.split(separator: ".").dropLast().joined(separator: ".").toCamelCase
         return request.fileio.writeFile(font.file.data, at: tempFile).flatMap { _ in
             return self.buildGlyphs(request: request, file: tempFile, name: name).map { _ in
                 return Response(status: .ok)
@@ -63,8 +63,7 @@ internal class FontsController {
             try? FileManager.default.removeItem(atPath: path)
             do {
                 try FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: false)
-                print(file, path)
-                try shellOut(to: FontsController.buildGlyphsCommand, arguments: [file, path])
+                try shellOut(to: FontsController.buildGlyphsCommand, arguments: [file.bashEncoded, path.bashEncoded])
             } catch {
                 try? FileManager.default.removeItem(atPath: path)
                 throw Abort(.internalServerError, reason: "Failed to create glyphs: \(error.localizedDescription)")

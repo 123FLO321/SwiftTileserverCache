@@ -23,8 +23,9 @@ internal class StylesController {
     private let tileServerURL: String
     private var externalStyles: [String: Style]
     private let folder: String
+    private let fontsController: FontsController
 
-    internal init(tileServerURL: String, externalStyles: [Style], folder: String) {
+    internal init(tileServerURL: String, externalStyles: [Style], folder: String, fontsController: FontsController) {
         try? FileManager.default.createDirectory(atPath: folder, withIntermediateDirectories: true)
         try? FileManager.default.createDirectory(atPath: "\(folder)/External", withIntermediateDirectories: false)
         self.tileServerURL = tileServerURL
@@ -32,6 +33,7 @@ internal class StylesController {
             into[style.id] = style
         })
         self.folder = folder
+        self.fontsController = fontsController
     }
 
     // MARK: - Routes
@@ -41,6 +43,38 @@ internal class StylesController {
             let externalStyles = Array(self.externalStyles.values) as [Style]
             return (styles + externalStyles).map { $0.removingURL }
         }
+    }
+    
+    internal func getWithAnalysis(request: Request) -> EventLoopFuture<[Style]> {
+        return get(request: request).flatMap({ styles in
+            let analysisFutures = styles.map({ style in
+                return self.analyse(request: request, id: style.id).map({ analysis in
+                    return (id: style.id, analysis: analysis)
+                })
+            })
+            return analysisFutures.flatten(on: request.eventLoop).map { analysis in
+                return styles.map({ style in
+                    var newStyle = style
+                    newStyle.analysis = analysis.first(where: {$0.id == style.id})?.analysis
+                    return newStyle
+                })
+            }
+        })
+    }
+    
+    internal func analyse(request: Request, id: String) -> EventLoopFuture<Style.Analysis> {
+        return analyseUsage(request: request, id: id).flatMap({ usage in
+            return self.analyseAvilableIcons(request: request, id: id).flatMapThrowing({ icons in
+                let fonts = try self.fontsController.getFonts()
+                let missingIcons = usage.icons.filter({!icons.contains($0)})
+                let missingFonts = usage.fonts.filter({!fonts.contains($0)})
+                return .init(
+                    missingFonts: missingFonts,
+                    missingIcons: missingIcons
+                )
+            })
+        })
+        
     }
 
     internal func addExternal(request: Request) throws -> EventLoopFuture<HTTPStatus> {
@@ -82,6 +116,11 @@ internal class StylesController {
             if newLayer["source"] as? String != nil {
                 newLayer["source"] = "combined"
             }
+            if var layout = newLayer["layout"] as? [String: Any], let textFonts = layout["text-font"] as? [String] {
+                layout["text-font"] = textFonts.map({$0.toCamelCase})
+                newLayer["layout"] = layout
+            }
+
             return newLayer
         }
         styleJson["layers"] = layers
@@ -150,6 +189,71 @@ internal class StylesController {
             return request.eventLoop.makeFailedFuture(error)
         }
         return request.fileio.writeFile(byteBuffer, at: stylesFile)
+    }
+    
+    private func analyseUsage(request: Request, id: String) -> EventLoopFuture<(fonts: [String], icons: [String])> {
+        return request.application.fileio.openFile(
+            path: "\(folder)/\(id).json",
+            mode: .read,
+            eventLoop: request.eventLoop
+        ).flatMap { fileHandle in
+            return request.application.fileio.read(fileHandle: fileHandle, byteCount: 131_072, allocator: .init(), eventLoop: request.eventLoop).flatMapThrowing { buffer in
+                guard let styleJson = try? JSONSerialization.jsonObject(with: Data(buffer: buffer)) as? [String: Any],
+                      let layers = styleJson["layers"] as? [[String: Any]]
+                else {
+                    throw Abort(.badRequest, reason: "style.json is not valid josn")
+                }
+                var fonts = Set<String>()
+                var icons = Set<String>()
+                
+                // TODO: Implement Resolved Icons
+                for layer in layers {
+                    if let layout = layer["layout"] as? [String: Any] {
+                        if let textFonts = layout["text-font"] as? [String], !textFonts.isEmpty {
+                            fonts.insert(textFonts[0])
+                        }
+                        if let iconImage = layout["icon-image"] as? String, !iconImage.isEmpty {
+                            icons.insert(iconImage)
+                        }
+                    }
+                    if let paint = layer["paint"] as? [String: Any] {
+                        if let backgroundPattern = paint["background-pattern"] as? String, !backgroundPattern.isEmpty {
+                            icons.insert(backgroundPattern)
+                        }
+                        if let fillPattern = paint["fill-pattern"] as? String, !fillPattern.isEmpty {
+                            icons.insert(fillPattern)
+                        }
+                        if let linePattern = paint["line-pattern"] as? String, !linePattern.isEmpty {
+                            icons.insert(linePattern)
+                        }
+                        if let fillExtrusionPattern = paint["fill-extrusion-pattern"] as? String, !fillExtrusionPattern.isEmpty {
+                            icons.insert(fillExtrusionPattern)
+                        }
+                    }
+                    
+                }
+                return (fonts: Array(fonts), icons: Array(icons))
+            }.always { _ in
+                try? fileHandle.close()
+            }
+        }
+    }
+    
+    private func analyseAvilableIcons(request: Request, id: String) -> EventLoopFuture<([String])> {
+        return request.application.fileio.openFile(
+            path: "\(folder)/\(id)/sprite.json",
+            mode: .read,
+            eventLoop: request.eventLoop
+        ).flatMap { fileHandle in
+            return request.application.fileio.read(fileHandle: fileHandle, byteCount: 131_072, allocator: .init(), eventLoop: request.eventLoop).flatMapThrowing { buffer in
+                guard let iconsJson = try? JSONSerialization.jsonObject(with: Data(buffer: buffer)) as? [String: Any] else {
+                    throw Abort(.badRequest, reason: "sprite.json is not valid josn")
+                }
+                return Array(iconsJson.keys)
+            }.always { _ in
+                try? fileHandle.close()
+            }
+        }
     }
 
 

@@ -60,6 +60,8 @@
                         <th>Name</th>
                         <th>ID</th>
                         <th style="width: 100px">Type</th>
+                        <th style="width: 100px">Fonts</th>
+                        <th style="width: 100px">Icons</th>
                         <th style="width: 200px">Preview</th>
                         <th style="width: 100px">Actions</th>
                     </tr>
@@ -78,6 +80,26 @@
                                 External
                             #else:
                                 Local
+                            #endif
+                        </td>
+                        <td style="vertical-align:middle">
+                            #if(count(style.analysis.missingFonts) == 0):
+                                OK
+                            #else:
+                                Missing:<br>
+                                #for(font in style.analysis.missingFonts):
+                                 - #(font)<br>
+                                #endfor
+                            #endif
+                        </td>
+                        <td style="vertical-align:middle">
+                            #if(count(style.analysis.missingIcons) == 0):
+                                OK
+                            #else:
+                                Missing:<br>
+                                #for(font in style.analysis.missingIcons):
+                                 - #(font)<br>
+                                #endfor
                             #endif
                         </td>
                         <td style="padding:0">

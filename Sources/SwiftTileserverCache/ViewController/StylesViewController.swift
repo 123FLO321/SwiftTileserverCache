@@ -24,7 +24,7 @@ internal class StylesViewController: ViewController {
     }
 
     internal func render(request: Request) throws -> EventLoopFuture<View> {
-        return stylesController.get(request: request).flatMap { (styles) in
+        return stylesController.getWithAnalysis(request: request).flatMap { (styles) in
             let context = Context(
                 pageId: "styles",
                 pageName: "Styles",

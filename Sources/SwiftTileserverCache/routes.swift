@@ -24,7 +24,8 @@ func routes(_ app: Application) throws {
         app.routes.defaultMaxBodySize = ByteCount(stringLiteral: maxBodySize)
     }
 
-    let stylesController = StylesController(tileServerURL: tileServerURL, externalStyles: externalStyles, folder: "TileServer/Styles")
+    let fontsController = FontsController(folder: "TileServer/Fonts", tempFolder: "Temp")
+    let stylesController = StylesController(tileServerURL: tileServerURL, externalStyles: externalStyles, folder: "TileServer/Styles", fontsController: fontsController)
     app.get("styles", use: stylesController.get)
 
     let tileController = TileController(tileServerURL: tileServerURL, statsController: statsController, stylesController: stylesController)
@@ -53,7 +54,6 @@ func routes(_ app: Application) throws {
     protected.webSocket("api", "datasets", "add", onUpgrade: datasetController.download)
     protected.webSocket("api", "datasets", "delete", onUpgrade: datasetController.delete)
 
-    let fontsController = FontsController(folder: "TileServer/Fonts", tempFolder: "Temp")
     protected.on(.POST, "api", "fonts", "add", body: .collect(maxSize: "64mb"), use: fontsController.add)
     protected.delete("api", "fonts", "delete", ":name", use: fontsController.delete)
 
