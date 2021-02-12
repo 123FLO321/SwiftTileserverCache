@@ -83,23 +83,27 @@
                             #endif
                         </td>
                         <td style="vertical-align:middle">
-                            #if(count(style.analysis.missingFonts) == 0):
-                                OK
-                            #else:
-                                Missing:<br>
-                                #for(font in style.analysis.missingFonts):
-                                 - #(font)<br>
-                                #endfor
+                            #if(style.analysis):
+                                #if(&& count(style.analysis.missingFonts) == 0):
+                                    OK
+                                #else:
+                                    Missing:<br>
+                                    #for(font in style.analysis.missingFonts):
+                                     - #(font)<br>
+                                    #endfor
+                                #endif
                             #endif
                         </td>
                         <td style="vertical-align:middle">
-                            #if(count(style.analysis.missingIcons) == 0):
-                                OK
-                            #else:
-                                Missing:<br>
-                                #for(font in style.analysis.missingIcons):
-                                 - #(font)<br>
-                                #endfor
+                            #if(style.analysis):
+                                #if(count(style.analysis.missingIcons) == 0):
+                                    OK
+                                #else:
+                                    Missing:<br>
+                                    #for(font in style.analysis.missingIcons):
+                                     - #(font)<br>
+                                    #endfor
+                                #endif
                             #endif
                         </td>
                         <td style="padding:0">
