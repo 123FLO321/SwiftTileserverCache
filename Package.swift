@@ -8,8 +8,8 @@ let package = Package(
         .macOS(.v10_15) // linux does not yet have runntime availability checks so this doesn't apply to linux yet
     ],
     dependencies: [
-        .package(url: "https://github.com/vapor/vapor", from: "4.0.0"),
-        .package(url: "https://github.com/vapor/leaf", from: "4.0.0-rc"),
+        .package(url: "https://github.com/vapor/vapor", from: "4.36.2"),
+        .package(url: "https://github.com/vapor/leaf", from: "4.0.1"),
         .package(url: "https://github.com/JohnSundell/ShellOut", from: "2.3.0")
     ],
     targets: [

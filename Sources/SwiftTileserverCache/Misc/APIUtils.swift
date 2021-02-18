@@ -18,7 +18,7 @@ public class APIUtils {
             let errorReason: String
             if response.status.code >= 200 && response.status.code < 300 {
                 if let type = type, response.content.contentType?.type != type {
-                    errorReason = "Failed to load file. Got invalid type: \(request.content.contentType?.description ?? "non")"
+                    errorReason = "Failed to load file. Got invalid type: \(request.content.contentType?.description ?? "none")"
                 } else if let body = response.body, body.readableBytes != 0 {
                     return request.application.fileio.openFile(
                         path: to,

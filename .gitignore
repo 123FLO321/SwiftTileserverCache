@@ -8,4 +8,8 @@ Package.resolved
 /Templates
 /Markers
 /TileServer
+/Temp
 .swiftpm/
+.env
+.env.development
+docker-compose.development.yml

@@ -1,0 +1,62 @@
+#extend("Resources/Views/Base"):
+    #export("stylesheets"):
+    #endexport
+    #export("scripts"):
+        <script>
+            $(function() {
+                deleteDataset()
+            });
+
+            function deleteDataset() {
+                startedLoading()
+                const url = $('\#url').val()
+                const name = $('\#name').val()
+                const webSocket = new WebSocket(window.location.protocol.replace('http','ws')+'//'+window.location.host+'/admin/api/datasets/delete')
+                webSocket.onopen = function() {
+                    webSocket.send('#(datasetName)')
+                }
+                webSocket.onerror = function(event) {
+                    stoppedLoading('Failed to connect to the server!')
+                }
+                webSocket.onmessage = function(event) {
+                    if (event.data == 'ok') {
+                        webSocket.close()
+                        window.location = '/admin/datasets'
+                    } else if (event.data == 'deleted') {
+                        $('\#progress-text').html("Combining Datasets...")
+                    } else {
+                        webSocket.close()
+                        stoppedLoading(event.data ? 'Failed to delete dataset: ' + event.data : 'Failed to connect to the server!')
+                    }
+                }
+                return false;
+            }
+
+            function setProgress(text, percentage) {
+                $('\#progress-text').html(text)
+            }
+
+            function startedLoading() {
+                $('\#progress-text').html("Downloading Dataset...")
+                $('\#submit').prop('disabled', true)
+                $('\#progress').show()
+            }
+
+            function stoppedLoading(error) {
+                $('\#submit').prop('disabled', false)
+                $('\#progress').hide()
+                alert(error)
+                window.location = '/admin/datasets'
+            }
+        </script>
+    #endexport
+    #export("content"):
+        <h1 align="center">Delete Dataset #(datasetName)</h1>
+        <br>
+        <div id="progress" class="progress" style="width:90%; margin-left: 5%; mergin-right: 5%; margin-top: 70px; display: none;">
+          <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">
+            <span id="progress-text"></span>
+          </div>
+        </div>
+    #endexport
+#endextend

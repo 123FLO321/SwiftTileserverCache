@@ -1,0 +1,62 @@
+#extend("Resources/Views/Base"):
+    #export("stylesheets"):
+    #endexport
+    #export("scripts"):
+        <script>
+            $(function() {
+                deleteStyle()
+            });
+
+            function deleteStyle() {
+                startedLoading(`Processing`)
+                $.ajax({
+                    type: "DELETE",
+                    url: "/admin/api/styles/local/#(styleId)",
+                    success: function(id) {
+                        setProgress("Waiting for TilesServer-GL")
+                        setInterval(() => {
+                             $.ajax({
+                                type: "GET",
+                                url: "/styles",
+                                success: function(styles) {
+                                    if (!styles.some(style => style.id == '#(styleId)')) {
+                                        window.location = '/admin/styles'
+                                    }
+                                }
+                            })
+                        }, 1000)
+                    },
+                    error: function(data, error, errorText) {
+                        stoppedLoading('Failed to delete Style: ' + (data.responseJSON ? data.responseJSON.reason : errorText))
+                    }
+                })
+                return false
+            }
+
+            function setProgress(text) {
+                $('\#progress-text').html(text)
+            }
+
+            function startedLoading(text) {
+                $('\#progress-text').html(text)
+                $('\#submit').prop('disabled', true)
+                $('\#progress').show()
+            }
+
+            function stoppedLoading(error) {
+                $('\#submit').prop('disabled', false)
+                $('\#progress').hide()
+                alert(error)
+            }
+        </script>
+    #endexport
+    #export("content"):
+        <h1 align="center">Delete Local Style #(styleId)</h1>
+        <br>
+        <div id="progress" class="progress" style="width:90%; margin-left: 5%; mergin-right: 5%; margin-top: 70px; display: none;">
+          <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">
+            <span id="progress-text"></span>
+          </div>
+        </div>
+    #endexport
+#endextend

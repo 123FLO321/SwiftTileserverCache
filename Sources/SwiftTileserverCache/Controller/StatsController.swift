@@ -10,8 +10,6 @@ import Leaf
 
 internal class StatsController {
 
-    private let tileServerURL: String
-    private let tiles: [(style: Style, url: String)]
     private let fileToucher: FileToucher
 
     private let tileHitRatioLock = NSLock()
@@ -21,42 +19,8 @@ internal class StatsController {
     private let markerHitRatioLock = NSLock()
     private var markerHitRatios = [String: HitRatio]()
 
-    internal init(tileServerURL: String, tiles: [(style: Style, url: String)], fileToucher: FileToucher) {
-        self.tileServerURL = tileServerURL
-        self.tiles = tiles
+    internal init(fileToucher: FileToucher) {
         self.fileToucher = fileToucher
-    }
-
-    // MARK: - Routes
-
-    internal func get(request: Request) -> EventLoopFuture<View> {
-
-        self.tileHitRatioLock.lock()
-        let tileHitRatios = self.tileHitRatios.map { (ratio) -> [String: String] in
-            return ["key": "\(ratio.key)", "value": "\(ratio.value.displayValue)"]
-        }
-        self.tileHitRatioLock.unlock()
-        self.staticMapHitRatioLock.lock()
-        let staticMapHitRatios = self.staticMapHitRatios.map { (ratio) -> [String: String] in
-            return ["key": "\(ratio.key)", "value": "\(ratio.value.displayValue)"]
-        }
-        self.staticMapHitRatioLock.unlock()
-        self.markerHitRatioLock.lock()
-        let markerHitRatios = self.markerHitRatios.map { (ratio) -> [String: String] in
-            return ["key": "\(ratio.key)", "value": "\(ratio.value.displayValue)"]
-        }
-        self.markerHitRatioLock.unlock()
-
-        let context = [
-            "tileHitRatios": tileHitRatios,
-            "staticMapHitRatios": staticMapHitRatios,
-            "markerHitRatios": markerHitRatios
-        ]
-        return request.view.render("Resources/Views/Stats", context)
-    }
-
-    internal func getStyles(request: Request) -> EventLoopFuture<[Style]> {
-        return loadStyles(request: request)
     }
 
     // MARK: - Stats
@@ -85,15 +49,25 @@ internal class StatsController {
         markerHitRatioLock.unlock()
     }
 
-    // MARK: - Utils
+    internal func getTileStats() -> [String : HitRatio] {
+        self.tileHitRatioLock.lock()
+        let tileHitRatios = self.tileHitRatios
+        self.tileHitRatioLock.unlock()
+        return tileHitRatios
+    }
 
-    private func loadStyles(request: Request) -> EventLoopFuture<[Style]> {
-        let stylesURL = "\(tileServerURL)/styles.json"
-        return APIUtils.loadJSON(request: request, from: stylesURL).flatMapError { error in
-            return request.eventLoop.makeFailedFuture(Abort(.badRequest, reason: "Failed to load styles: (\(error.localizedDescription))"))
-        }.map({ (styles) -> ([Style]) in
-            return styles + self.tiles.map({$0.style})
-        })
+    internal func getStaticMapStats() -> [String : HitRatio] {
+        self.staticMapHitRatioLock.lock()
+        let staticMapHitRatios = self.staticMapHitRatios
+        self.staticMapHitRatioLock.unlock()
+        return staticMapHitRatios
+    }
+
+    internal func getMarkerStats() -> [String : HitRatio] {
+        self.markerHitRatioLock.lock()
+        let markerHitRatios = self.markerHitRatios
+        self.markerHitRatioLock.unlock()
+        return markerHitRatios
     }
 
 }

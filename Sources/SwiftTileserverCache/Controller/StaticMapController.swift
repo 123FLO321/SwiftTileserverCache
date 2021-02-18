@@ -11,17 +11,17 @@ import Leaf
 internal class StaticMapController {
     
     private let tileServerURL: String
-    private let tiles: [String: String]
     private let tileController: TileController
     private let statsController: StatsController
+    private let stylesController: StylesController
 
     private let sphericalMercator = SphericalMercator()
 
-    init(tileServerURL: String, tiles: [(style: Style, url: String)], tileController: TileController, statsController: StatsController) {
+    init(tileServerURL: String, tileController: TileController, statsController: StatsController, stylesController: StylesController) {
         self.tileServerURL = tileServerURL
-        self.tiles = tiles.reduce(into: [String: String](), { $0[$1.style.id] = $1.url })
         self.tileController = tileController
         self.statsController = statsController
+        self.stylesController = stylesController
     }
     
     // MARK: - Routes
@@ -71,7 +71,7 @@ internal class StaticMapController {
     
     // MARK: - Utils
     
-    private func handleRequest(request: Request, staticMap: StaticMap) -> EventLoopFuture<Response> {
+    internal func handleRequest(request: Request, staticMap: StaticMap) -> EventLoopFuture<Response> {
         let path = staticMap.path
         if !FileManager.default.fileExists(atPath: path) {
             return generateStaticMapAndResponse(request: request, path: path, staticMap: staticMap).always { result in
@@ -150,7 +150,7 @@ internal class StaticMapController {
     }
     
     private func loadBaseStaticMap(request: Request, path: String, staticMap: StaticMap) -> EventLoopFuture<Void> {
-        if let url = tiles[staticMap.style] {
+        if let url = stylesController.getExternalStyle(name: staticMap.style)?.url {
             let hasScale = url.contains("{@scale}") || url.contains("{scale}")
             return generateBaseStaticMap(request: request, path: path, staticMap: staticMap, hasScale: hasScale)
         }

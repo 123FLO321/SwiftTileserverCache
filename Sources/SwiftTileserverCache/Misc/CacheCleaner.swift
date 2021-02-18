@@ -20,6 +20,7 @@ public class CacheCleaner {
         self.maxAgeMinutes = maxAgeMinutes
         self.logger = Logger(label: "CacheCleaner-\(folder)")
         let thread = DispatchQueue(label: "CacheCleaner-\(folder)")
+        try? FileManager.default.createDirectory(atPath: folder, withIntermediateDirectories: true)
         thread.async {
             while true {
                 self.runOnce()
