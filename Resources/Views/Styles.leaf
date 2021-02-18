@@ -83,8 +83,8 @@
                             #endif
                         </td>
                         <td style="vertical-align:middle">
-                            #if(style.analysis):
-                                #if(&& count(style.analysis.missingFonts) == 0):
+                            #if(style.analysis != nil):
+                                #if(count(style.analysis.missingFonts) == 0):
                                     OK
                                 #else:
                                     Missing:<br>
@@ -95,7 +95,7 @@
                             #endif
                         </td>
                         <td style="vertical-align:middle">
-                            #if(style.analysis):
+                            #if(style.analysis != nil):
                                 #if(count(style.analysis.missingIcons) == 0):
                                     OK
                                 #else:

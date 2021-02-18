@@ -47,7 +47,7 @@ internal class StylesController {
     
     internal func getWithAnalysis(request: Request) -> EventLoopFuture<[Style]> {
         return get(request: request).flatMap({ styles in
-            let analysisFutures = styles.filter({$0.external == false}).map({ style in
+            let analysisFutures = styles.filter({$0.external != true}).map({ style in
                 return self.analyse(request: request, id: style.id).map({ analysis in
                     return (id: style.id, analysis: analysis)
                 })
