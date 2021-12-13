@@ -18,11 +18,11 @@ func routes(_ app: Application) throws {
         )
     })
 
-    let statsController = StatsController(fileToucher: FileToucher())
-
     if let maxBodySize = Environment.get("MAX_BODY_SIZE") {
         app.routes.defaultMaxBodySize = ByteCount(stringLiteral: maxBodySize)
     }
+
+    let statsController = StatsController(fileToucher: FileToucher())
 
     let fontsController = FontsController(folder: "TileServer/Fonts", tempFolder: "Temp")
     let stylesController = StylesController(tileServerURL: tileServerURL, externalStyles: externalStyles, folder: "TileServer/Styles", fontsController: fontsController)
