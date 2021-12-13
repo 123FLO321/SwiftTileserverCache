@@ -9,7 +9,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/vapor/vapor", from: "4.0.0"),
-        .package(url: "https://github.com/vapor/leaf", from: "4.0.0-rc"),
+        .package(url: "https://github.com/vapor/leaf", from: "4.0.0"),
         .package(url: "https://github.com/JohnSundell/ShellOut", from: "2.3.0")
     ],
     targets: [
