@@ -9,19 +9,19 @@ func cachecleaners(_ app: Application) throws {
     )
 
     _ = CacheCleaner(
-        folder: "Cache/Tile",
+        folder: "Cache/Static",
         maxAgeMinutes: UInt32(Environment.get("STATIC_CACHE_MAX_AGE_MINUTES") ?? ""),
         clearDelaySeconds: UInt32(Environment.get("STATIC_CACHE_DELAY_SECONDS") ?? "") ?? 900
     )
 
     _ = CacheCleaner(
-        folder: "Cache/Tile",
+        folder: "Cache/StaticMulti",
         maxAgeMinutes: UInt32(Environment.get("STATIC_MUTLI_CACHE_MAX_AGE_MINUTES") ?? ""),
         clearDelaySeconds: UInt32(Environment.get("STATIC_MULTI_CACHE_DELAY_SECONDS") ?? "") ?? 900
     )
 
     _ = CacheCleaner(
-        folder: "Cache/Tile",
+        folder: "Cache/Marker",
         maxAgeMinutes: UInt32(Environment.get("MARKER_CACHE_MAX_AGE_MINUTES") ?? ""),
         clearDelaySeconds: UInt32(Environment.get("MARKER_CACHE_DELAY_SECONDS") ?? "") ?? 900
     )
