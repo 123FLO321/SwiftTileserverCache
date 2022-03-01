@@ -61,7 +61,7 @@ internal class StylesController {
             }
         })
     }
-    
+
     internal func analyse(request: Request, id: String) -> EventLoopFuture<Style.Analysis> {
         return analyseUsage(request: request, id: id).flatMap({ usage in
             return self.analyseAvilableIcons(request: request, id: id).flatMapThrowing({ icons in
@@ -73,8 +73,12 @@ internal class StylesController {
                     missingIcons: missingIcons
                 )
             })
+        }).recover({ _ in
+            return .init(
+                missingFonts: ["error loading style"],
+                missingIcons: ["error loading style"]
+            )
         })
-        
     }
 
     internal func addExternal(request: Request) throws -> EventLoopFuture<HTTPStatus> {
