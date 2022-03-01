@@ -42,8 +42,6 @@ RUN apt-get -y update && apt-get -y install nodejs npm
  # Install fontnik
 RUN npm install -g fontnik
 
-RUN which build-glyphs
-
 # Copy build artifacts
 COPY --from=build /build/.build/release /SwiftTileserverCache
 # Copy Resources
