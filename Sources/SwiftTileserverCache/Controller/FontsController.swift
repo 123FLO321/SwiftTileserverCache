@@ -6,7 +6,6 @@
 //
 
 import Vapor
-import ShellOut
 
 internal class FontsController {
 
@@ -63,7 +62,7 @@ internal class FontsController {
             try? FileManager.default.removeItem(atPath: path)
             do {
                 try FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: false)
-                try shellOut(to: FontsController.buildGlyphsCommand, arguments: [file.bashEncoded, path.bashEncoded])
+                try escapedShellOut(to: FontsController.buildGlyphsCommand, arguments: [file, path])
             } catch {
                 try? FileManager.default.removeItem(atPath: path)
                 throw Abort(.internalServerError, reason: "Failed to create glyphs: \(error.localizedDescription)")

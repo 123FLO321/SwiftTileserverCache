@@ -6,7 +6,6 @@
 //
 
 import Vapor
-import ShellOut
 
 internal class DatasetsController {
 
@@ -99,7 +98,7 @@ internal class DatasetsController {
         if datasets.count == 1 {
             try? FileManager.default.removeItem(atPath: self.folder + "/Combined.mbtiles")
             do {
-                try shellOut(to: "/bin/ln", arguments: ["-s", "List/\(datasets[0]).mbtiles".bashEncoded, "Combined.mbtiles"], at: self.folder)
+                try escapedShellOut(to: "/bin/ln", arguments: ["-s", "List/\(datasets[0]).mbtiles", "Combined.mbtiles"], at: self.folder)
             } catch {
                 return request.eventLoop.makeFailedFuture("Failed to link mbtiles: \(error.localizedDescription)")
             }
@@ -107,7 +106,7 @@ internal class DatasetsController {
         } else {
             return request.application.threadPool.runIfActive(eventLoop: request.eventLoop) {
                 do {
-                    try shellOut(to: DatasetsController.tileJoinCommand, arguments: ["--force", "-o", "Combined.mbtiles", "List/*.mbtiles".bashEncoded], at: self.folder)
+                    try escapedShellOut(to: DatasetsController.tileJoinCommand, arguments: ["--force", "-o", "Combined.mbtiles", "List/*.mbtiles"], at: self.folder)
                 } catch {
                     throw Abort(.internalServerError, reason: "Failed to get mbtiles: \(error.localizedDescription)")
                 }
