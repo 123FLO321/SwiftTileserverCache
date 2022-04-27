@@ -7,7 +7,6 @@
 
 import Foundation
 import Vapor
-import ShellOut
 
 public class CacheCleaner {
 
@@ -34,7 +33,7 @@ public class CacheCleaner {
     
     private func runOnce() {
         do {
-            let count = Int(try shellOut(to: "./Resources/Scripts/clear.bash", arguments: [folder.path, "\(maxAgeMinutes)"])) ?? 0
+            let count = Int(try escapedShellOut(to: "./Resources/Scripts/clear.bash")) ?? 0
             if count != 0 {
                 logger.info("Removed \(count) Files")
             }

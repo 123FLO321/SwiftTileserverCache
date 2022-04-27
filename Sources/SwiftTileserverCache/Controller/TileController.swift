@@ -29,8 +29,8 @@ internal class TileController {
             let y = request.parameters.get("y", as: Int.self),
             let scale = request.parameters.get("scale", as: UInt8.self),
             scale >= 1,
-            let format = request.parameters.get("format"),
-            format == "png" || format == "jpg" else {
+            let formatString = request.parameters.get("format"),
+            let format = ImageFormat(rawValue: formatString) else {
                 throw Abort(.badRequest)
         }
         return generateTileAndResponse(request: request, style: style, z: z, x: x, y: y, scale: scale, format: format)
@@ -38,7 +38,7 @@ internal class TileController {
 
     // MARK: - Utils
 
-    internal func generateTile(request: Request, style: String, z: Int, x: Int, y: Int, scale: UInt8, format: String) -> EventLoopFuture<String> {
+    internal func generateTile(request: Request, style: String, z: Int, x: Int, y: Int, scale: UInt8, format: ImageFormat) -> EventLoopFuture<String> {
         let path = "Cache/Tile/\(style)-\(z)-\(x)-\(y)-\(scale).\(format)"
         guard !FileManager.default.fileExists(atPath: path) else {
             request.application.logger.info("Served a cached tile")
@@ -54,7 +54,7 @@ internal class TileController {
                          .replacingOccurrences(of: "{y}", with: "\(y)")
                          .replacingOccurrences(of: "{scale}", with: "\(scale)")
                          .replacingOccurrences(of: "{@scale}", with: scaleString)
-                         .replacingOccurrences(of: "{format}", with: format)
+                         .replacingOccurrences(of: "{format}", with: format.rawValue)
         } else {
             tileURL = "\(tileServerURL)/styles/\(style)/\(z)/\(x)/\(y)\(scaleString).\(format)"
         }
@@ -68,7 +68,7 @@ internal class TileController {
         }.transform(to: path)
     }
 
-    private func generateTileAndResponse(request: Request, style: String, z: Int, x: Int, y: Int, scale: UInt8, format: String) -> EventLoopFuture<Response> {
+    private func generateTileAndResponse(request: Request, style: String, z: Int, x: Int, y: Int, scale: UInt8, format: ImageFormat) -> EventLoopFuture<Response> {
         return generateTile(request: request, style: style, z: z, x: x, y: y, scale: scale, format: format).flatMap { path in
             return self.generateResponse(request: request, path: path)
         }

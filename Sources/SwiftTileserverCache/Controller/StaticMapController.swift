@@ -161,7 +161,7 @@ internal class StaticMapController {
         } else {
             scaleString = "@\(staticMap.scale)x"
         }
-        let tileURL = "\(tileServerURL)/styles/\(staticMap.style)/static/\(staticMap.longitude),\(staticMap.latitude),\(staticMap.zoom)@\(staticMap.bearing ?? 0),\(staticMap.pitch ?? 0)/\(staticMap.width)x\(staticMap.height)\(scaleString).\(staticMap.format ?? "png")"
+        let tileURL = "\(tileServerURL)/styles/\(staticMap.style)/static/\(staticMap.longitude),\(staticMap.latitude),\(staticMap.zoom)@\(staticMap.bearing ?? 0),\(staticMap.pitch ?? 0)/\(staticMap.width)x\(staticMap.height)\(scaleString).\(staticMap.format ?? ImageFormat.png)"
         return APIUtils.downloadFile(request: request, from: tileURL, to: path, type: "image").flatMapError { error in
             return request.eventLoop.makeFailedFuture(Abort(.badRequest, reason: "Failed to load base static map: (\(error.localizedDescription))"))
         }
@@ -183,7 +183,7 @@ internal class StaticMapController {
                     x: point.x + xOffset,
                     y: point.y + yOffset,
                     scale: staticMap.scale,
-                    format: staticMap.format ?? "png"
+                    format: staticMap.format ?? ImageFormat.png
                 ))
             }
         }

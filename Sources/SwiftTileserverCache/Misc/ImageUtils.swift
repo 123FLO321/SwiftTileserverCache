@@ -32,7 +32,7 @@ public class ImageUtils {
             var segments = [[String]]()
             for tilePath in tilePaths.sorted() {
                 if segments.count == 0 {
-                    segments.append(["\\("])
+                    segments.append(["("])
                 }
                 let split = tilePath.components(separatedBy: "-")
                 let y = Int(split[split.count-3]) ?? 0
@@ -41,12 +41,12 @@ public class ImageUtils {
                         segments[currentSemgent].append(tilePath)
                         segments[currentSemgent].append("-append")
                     } else {
-                        segments[currentSemgent].append("\\)")
+                        segments[currentSemgent].append(")")
                         if segments.count != 1 {
                             segments[currentSemgent].append("+append")
                         }
                         currentSemgent += 1
-                        segments.append(["\\("])
+                        segments.append(["("])
                         segments[currentSemgent].append(tilePath)
                     }
                 } else {
@@ -54,7 +54,7 @@ public class ImageUtils {
                 }
                 lastY = y
             }
-            segments[currentSemgent].append("\\)")
+            segments[currentSemgent].append(")")
             segments[currentSemgent].append("+append")
             args = segments.flatMap({$0})
         }
@@ -77,7 +77,7 @@ public class ImageUtils {
         args += ["-crop", "\(imgWidth)x\(imgHeight)+\(imgWidthOffset)+\(imgHeightOffset)", "+repage", path]
         return request.application.threadPool.runIfActive(eventLoop: request.eventLoop) {
             do {
-                try shellOut(to: ImageUtils.imagemagickConvertCommand, arguments: args)
+                try escapedShellOut(to: ImageUtils.imagemagickConvertCommand, arguments: args)
             } catch let error as ShellOutError {
                 request.application.logger.error("Failed to run magick: \(error.message)")
                 throw Abort(.internalServerError, reason: "ImageMagick Error: \(error.message)")
@@ -117,10 +117,10 @@ public class ImageUtils {
             
             polygonArguments += [
                 "-strokewidth", "\(polygon.strokeWidth)",
-                "-fill", polygon.fillColor.bashEncoded,
-                "-stroke", polygon.strokeColor.bashEncoded,
+                "-fill", polygon.fillColor,
+                "-stroke", polygon.strokeColor,
                 "-gravity", "Center",
-                "-draw", "\"polygon \(polygonPath)\""
+                "-draw", "polygon \(polygonPath)"
             ]
         }
 
@@ -150,10 +150,10 @@ public class ImageUtils {
 
             circleArguments += [
                 "-strokewidth", "\(circle.strokeWidth)",
-                "-fill", circle.fillColor.bashEncoded,
-                "-stroke", circle.strokeColor.bashEncoded,
+                "-fill", circle.fillColor,
+                "-stroke", circle.strokeColor,
                 "-gravity", "Center",
-                "-draw", "\"circle \(x),\(y) \(x),\(y+radius)\""
+                "-draw", "circle \(x),\(y) \(x),\(y+radius)"
             ]
         }
         
@@ -206,7 +206,7 @@ public class ImageUtils {
             }
 
             markerArguments += [
-                "\\(", markerPath, "-resize", "\(marker.width * UInt16(staticMap.scale))x\(marker.height * UInt16(staticMap.scale))", "\\)",
+                "(", markerPath, "-resize", "\(marker.width * UInt16(staticMap.scale))x\(marker.height * UInt16(staticMap.scale))", ")",
                 "-gravity", "Center",
                 "-geometry", "\(realOffsetXPrefix)\(realOffset.x)\(realOffsetYPrefix)\(realOffset.y)",
                 "-composite"
@@ -216,13 +216,13 @@ public class ImageUtils {
         
         return request.application.threadPool.runIfActive(eventLoop: request.eventLoop) {
             do {
-                try shellOut(to: ImageUtils.imagemagickConvertCommand, arguments: [
-                    basePath] +
+                let args = [basePath] +
                     polygonArguments +
                     circleArguments +
                     markerArguments +
-                    [path
-                ])
+                    [path]
+
+                try escapedShellOut(to: ImageUtils.imagemagickConvertCommand, arguments: args)
             } catch let error as ShellOutError {
                 request.application.logger.error("Failed to run magick: \(error.message)")
                 throw Abort(.internalServerError, reason: "ImageMagick Error: \(error.message)")
@@ -252,7 +252,7 @@ public class ImageUtils {
         
         var args = [String]()
         for grid in grids {
-            args.append("\\(")
+            args.append("(")
             args.append(grid.firstPath)
             for image in grid.images {
                 args.append(image.path)
@@ -262,7 +262,7 @@ public class ImageUtils {
                     args.append("+append")
                 }
             }
-            args.append("\\)")
+            args.append(")")
             if grid.direction == .bottom {
                 args.append("-append")
             } else {
@@ -273,7 +273,7 @@ public class ImageUtils {
         
         return request.application.threadPool.runIfActive(eventLoop: request.eventLoop) {
             do {
-                try shellOut(to: imagemagickConvertCommand, arguments: args)
+                try escapedShellOut(to: imagemagickConvertCommand, arguments: args)
             } catch let error as ShellOutError {
                 request.application.logger.error("Failed to run magick: \(error.message)")
                 throw Abort(.internalServerError, reason: "ImageMagick Error: \(error.message)")
