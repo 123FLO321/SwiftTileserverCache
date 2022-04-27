@@ -7,7 +7,6 @@
 
 import Foundation
 import Vapor
-import ShellOut
 
 public class FileToucher {
 
@@ -34,7 +33,7 @@ public class FileToucher {
         if !queue.isEmpty {
             for slice in queue.chunked(into: 100) {
                 do {
-                    try shellOut(to: "/usr/bin/touch -c", arguments: slice)
+                    try escapedShellOut(to: "/usr/bin/touch -c", arguments: slice)
                     count += slice.count
                 } catch {
                     logger.warning("Failed to touch files: \(error)")
