@@ -95,7 +95,9 @@ internal class DatasetsController {
         } catch {
             return request.eventLoop.makeFailedFuture("Failed to get mbtiles: \(error.localizedDescription)")
         }
-        if datasets.count == 1 {
+        if datasets.count == 0 {
+            return request.eventLoop.makeSucceededFuture(())
+        } else if datasets.count == 1 {
             try? FileManager.default.removeItem(atPath: self.folder + "/Combined.mbtiles")
             do {
                 try escapedShellOut(to: "/bin/ln", arguments: ["-s", "List/\(datasets[0]).mbtiles", "Combined.mbtiles"], at: self.folder)
@@ -106,7 +108,8 @@ internal class DatasetsController {
         } else {
             return request.application.threadPool.runIfActive(eventLoop: request.eventLoop) {
                 do {
-                    try escapedShellOut(to: DatasetsController.tileJoinCommand, arguments: ["--force", "-o", "Combined.mbtiles", "List/*.mbtiles"], at: self.folder)
+                    let files = datasets.map({ "List/\($0).mbtiles" })
+                    try escapedShellOut(to: DatasetsController.tileJoinCommand, arguments: ["--force", "-o", "Combined.mbtiles"] + files, at: self.folder)
                 } catch {
                     throw Abort(.internalServerError, reason: "Failed to get mbtiles: \(error.localizedDescription)")
                 }
