@@ -196,7 +196,7 @@ public class ImageUtils {
                 markerPath = "Markers/\(marker.url)"
             }
             if let fallbackUrl = marker.fallbackUrl, !FileManager.default.fileExists(atPath: markerPath) {
-                if fallbackUrl.starts(with: "http://") || marker.url.starts(with: "https://") {
+                if fallbackUrl.starts(with: "http://") || fallbackUrl.starts(with: "https://") {
                     let markerHashed = fallbackUrl.persistentHash
                     let markerFormat = fallbackUrl.components(separatedBy: ".").last ?? "png"
                     markerPath = "Cache/Marker/\(markerHashed).\(markerFormat)"
