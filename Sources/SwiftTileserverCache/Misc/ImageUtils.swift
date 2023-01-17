@@ -1,10 +1,3 @@
-//
-//  ImageUtils.swift
-//  SwiftTileserverCache
-//
-//  Created by Florian Kostenzer on 03.03.20.
-//
-
 import Foundation
 import Vapor
 import ShellOut

@@ -1,10 +1,3 @@
-//
-//  FormatTag.swift
-//  SwiftTileserverCache
-//
-//  Created by Florian Kostenzer on 12.05.20.
-//
-
 import Vapor
 import Leaf
 

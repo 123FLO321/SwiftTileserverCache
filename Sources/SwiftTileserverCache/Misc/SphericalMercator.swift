@@ -1,12 +1,6 @@
-//
-//  SphericalMercator.swift
-//  SwiftTileserverCache
-//
-//  From: https://github.com/qin9smile/sphericalmercator.swift/blob/master/sphericalmercator.swift
-//
-
 import Foundation
 
+// Source: https://github.com/qin9smile/sphericalmercator.swift/blob/master/sphericalmercator.swift
 public struct Coordinate {
     public var latitude: Double
     public var longitude: Double

@@ -1,10 +1,3 @@
-//
-//  DatasetsController.swift
-//  SwiftTileserverCache
-//
-//  Created by Florian Kostenzer on 15.09.20.
-//
-
 import Vapor
 
 internal class FontsController {

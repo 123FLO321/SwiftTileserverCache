@@ -1,10 +1,3 @@
-//
-//  ResponseUtils.swift
-//  SwiftTileserverCache
-//
-//  Created by Florian Kostenzer on 17.05.20.
-//
-
 import Vapor
 
 internal class ResponseUtils<T> where T: Codable {

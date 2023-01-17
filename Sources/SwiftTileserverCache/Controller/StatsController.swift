@@ -1,10 +1,3 @@
-//
-//  StatsController.swift
-//  SwiftTileserverCache
-//
-//  Created by Florian Kostenzer on 08.05.20.
-//
-
 import Vapor
 import Leaf
 

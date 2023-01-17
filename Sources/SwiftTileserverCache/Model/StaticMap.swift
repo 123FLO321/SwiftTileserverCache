@@ -1,10 +1,3 @@
-//
-//  StaticMap.swift
-//  SwiftTileserverCache
-//
-//  Created by Florian Kostenzer on 04.03.20.
-//
-
 import Foundation
 
 public struct StaticMap: Codable, Hashable, PersistentHashable {

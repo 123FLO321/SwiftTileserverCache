@@ -1,10 +1,3 @@
-//
-//  CacheCleaner.swift
-//  SwiftTileserverCache
-//
-//  Created by Florian Kostenzer on 02.11.19.
-//
-
 import Foundation
 import Vapor
 

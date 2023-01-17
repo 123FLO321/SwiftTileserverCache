@@ -1,10 +1,3 @@
-//
-//  AdminAuthenticator.swift
-//  SwiftTileserverCache
-//
-//  Created by Florian Kostenzer on 15.09.20.
-//
-
 import Vapor
 
 struct AdminAuthenticator: Middleware {
