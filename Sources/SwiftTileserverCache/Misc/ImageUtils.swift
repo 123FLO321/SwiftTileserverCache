@@ -80,9 +80,11 @@ public class ImageUtils {
                 try escapedShellOut(to: ImageUtils.imagemagickConvertCommand, arguments: args)
             } catch let error as ShellOutError {
                 request.application.logger.error("Failed to run magick: \(error.message)")
+                removeImages(request: request, paths: tilePaths + [path])
                 throw Abort(.internalServerError, reason: "ImageMagick Error: \(error.message)")
             } catch {
                 request.application.logger.error("Failed to run magick: \(error)")
+                removeImages(request: request, paths: tilePaths + [path])
                 throw Abort(.internalServerError, reason: "ImageMagick Error")
             }
         }
@@ -158,6 +160,7 @@ public class ImageUtils {
         }
         
         var markerArguments = [String]()
+        var markerPaths = [String]()
         for marker in staticMap.markers ?? [] {
             let realOffset = getRealOffset(
                 at: Coordinate(latitude: marker.latitude, longitude: marker.longitude),
@@ -205,6 +208,7 @@ public class ImageUtils {
                 }
             }
 
+            markerPaths.append(markerPath)
             markerArguments += [
                 "(", markerPath, "-resize", "\(marker.width * UInt16(staticMap.scale))x\(marker.height * UInt16(staticMap.scale))", ")",
                 "-gravity", "Center",
@@ -225,9 +229,11 @@ public class ImageUtils {
                 try escapedShellOut(to: ImageUtils.imagemagickConvertCommand, arguments: args)
             } catch let error as ShellOutError {
                 request.application.logger.error("Failed to run magick: \(error.message)")
+                removeImages(request: request, paths: [basePath, path] + markerPaths)
                 throw Abort(.internalServerError, reason: "ImageMagick Error: \(error.message)")
             } catch {
                 request.application.logger.error("Failed to run magick: \(error)")
+                removeImages(request: request, paths: [basePath, path] + markerPaths)
                 throw Abort(.internalServerError, reason: "ImageMagick Error")
             }
         }
@@ -236,6 +242,7 @@ public class ImageUtils {
     
     public static func generateMultiStaticMap(request: Request, multiStaticMap: MultiStaticMap, path: String) -> EventLoopFuture<Void> {
         var grids = [(firstPath: String, direction: CombineDirection, images: [(direction: CombineDirection, path: String)])]()
+        var mapPaths = [String]()
         for grid in multiStaticMap.grid {
             var firstMapUrl = ""
             var images = [(CombineDirection, String)]()
@@ -246,6 +253,7 @@ public class ImageUtils {
                 } else {
                     images.append((map.direction, url))
                 }
+                mapPaths.append(url)
             }
             grids.append((firstMapUrl, grid.direction, images))
         }
@@ -276,9 +284,11 @@ public class ImageUtils {
                 try escapedShellOut(to: imagemagickConvertCommand, arguments: args)
             } catch let error as ShellOutError {
                 request.application.logger.error("Failed to run magick: \(error.message)")
+                removeImages(request: request, paths: [path] + mapPaths)
                 throw Abort(.internalServerError, reason: "ImageMagick Error: \(error.message)")
             } catch {
                 request.application.logger.error("Failed to run magick: \(error)")
+                removeImages(request: request, paths: [path] + mapPaths)
                 throw Abort(.internalServerError, reason: "ImageMagick Error")
             }
         }
@@ -304,6 +314,11 @@ public class ImageUtils {
             }
         }
         return (realOffsetX + (Int(extraX) * Int(scale)), realOffsetY + (Int(extraY) * Int(scale)))
+    }
+
+    private static func removeImages(request: Request, paths: [String]) -> Void {
+        request.logger.info("Clearing \(paths.count) potentially broken images")
+        try? escapedShellOut(to: "rm", arguments: ["-f"] + paths)
     }
 
 }
