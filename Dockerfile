@@ -1,7 +1,7 @@
 # ================================
 # Build image
 # ================================
-FROM swift:5.2 as build
+FROM swift:5.7 as build
 WORKDIR /build
 
 # Copy required folders into container
@@ -19,7 +19,7 @@ RUN swift build \
 # ================================
 # Run image
 # ================================
-FROM swift:5.2
+FROM swift:5.7
 WORKDIR /SwiftTileserverCache
 
 # Install imagemagick
