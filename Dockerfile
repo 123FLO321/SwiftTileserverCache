@@ -28,19 +28,17 @@ RUN apt-get -y update && apt-get install -y imagemagick
 # Install tippecanoe requirements
 RUN apt-get -y update && apt-get -y install build-essential libsqlite3-dev zlib1g-dev
 
-RUN git clone https://github.com/mapbox/tippecanoe.git \
+RUN git clone https://github.com/mapbox/tippecanoe.git -b 1.36.0 \
  && cd tippecanoe \
  && make -j \
  && make install \
  && rm -rf tippecanoe
 
-RUN which tile-join
-
 # Install fontnik requirements
 RUN apt-get -y update && apt-get -y install nodejs npm
 
  # Install fontnik
-RUN npm install -g fontnik
+RUN npm install -g fontnik@0.6.0
 
 # Copy build artifacts
 COPY --from=build /build/.build/release /SwiftTileserverCache
