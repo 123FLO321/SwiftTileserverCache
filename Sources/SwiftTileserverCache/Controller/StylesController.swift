@@ -1,9 +1,10 @@
 import Vapor
 import Leaf
+import ZIPFoundation
 
 internal class StylesController {
 
-    struct SaveStyle: Content {
+    struct SaveStyleFiles: Content {
         var id: String
         var name: String
         var styleJson: File
@@ -11,6 +12,12 @@ internal class StylesController {
         var spriteImage: File
         var spriteJson2x: File
         var spriteImage2x: File
+    }
+
+    struct SaveStyleZip: Content {
+        var id: String
+        var name: String
+        var zip: File
     }
 
     private let tileServerURL: String
@@ -57,7 +64,7 @@ internal class StylesController {
 
     internal func analyse(request: Request, id: String) -> EventLoopFuture<Style.Analysis> {
         return analyseUsage(request: request, id: id).flatMap({ usage in
-            return self.analyseAvilableIcons(request: request, id: id).flatMapThrowing({ icons in
+            return self.analyseAvailableIcons(request: request, id: id).flatMapThrowing({ icons in
                 let fonts = try self.fontsController.getFonts()
                 let missingIcons = usage.icons.filter({!icons.contains($0)})
                 let missingFonts = usage.fonts.filter({!fonts.contains($0)})
@@ -91,16 +98,31 @@ internal class StylesController {
         return saveExternalStyles(request: request).map({.ok})
     }
 
-    internal func addLocal(request: Request) throws -> EventLoopFuture<HTTPStatus> {
-        var style = try request.content.decode(SaveStyle.self)
-        guard let styleData = style.styleJson.data.readData(length: style.styleJson.data.readableBytes) else {
-            throw Abort(.badRequest, reason: "style.json is not readable")
+    internal func addLocal(request: Request) async throws -> HTTPStatus {
+        var name: String
+        var id: String
+        var styleJsonData: Data
+        var spriteJsonData: Data
+        var spriteImageData: Data
+        var spriteJson2xData: Data
+        var spriteImage2xData: Data
+        if var style = try? request.content.decode(SaveStyleZip.self) {
+            name = style.name
+            id = style.id
+            (styleJsonData, spriteJsonData, spriteImageData, spriteJson2xData, spriteImage2xData) = try await extractDataFromZip(request: request, style: &style)
+        } else if var style = try? request.content.decode(SaveStyleFiles.self) {
+            name = style.name
+            id = style.id
+            (styleJsonData, spriteJsonData, spriteImageData, spriteJson2xData, spriteImage2xData) = try extractDataFromFiles(style: &style)
+        } else {
+            throw Abort(.badRequest, reason: "Invalid request")
         }
-        guard var styleJson = try? JSONSerialization.jsonObject(with: styleData) as? [String: Any] else {
-            throw Abort(.badRequest, reason: "style.json is not valid josn")
+
+        guard var styleJson = try? JSONSerialization.jsonObject(with: styleJsonData) as? [String: Any] else {
+            throw Abort(.badRequest, reason: "style.json is not valid json")
         }
-        styleJson["name"] = style.name
-        styleJson["sprite"] = "{styleJsonFolder}/\(style.id)/sprite"
+        styleJson["name"] = name
+        styleJson["sprite"] = "{styleJsonFolder}/\(id)/sprite"
         styleJson["glyphs"] = "{fontstack}/{range}.pbf"
         styleJson["sources"] = [
             "combined": [
@@ -126,18 +148,64 @@ internal class StylesController {
             throw Abort(.internalServerError, reason: "failed to modify style.json")
         }
 
-        let stylePath = "\(folder)/\(style.id).json"
-        let spritePath = "\(folder)/\(style.id)"
+        let stylePath = "\(folder)/\(id).json"
+        let spritePath = "\(folder)/\(id)"
         try? FileManager.default.removeItem(atPath: stylePath)
         try? FileManager.default.removeItem(atPath: spritePath)
         try FileManager.default.createDirectory(atPath: spritePath, withIntermediateDirectories: false)
-        var fileWrites: [EventLoopFuture<Void>] = []
-        fileWrites.append(request.fileio.writeFile(ByteBuffer(data: modifiedStyleData), at: stylePath))
-        fileWrites.append(request.fileio.writeFile(style.spriteJson.data, at: "\(spritePath)/sprite.json"))
-        fileWrites.append(request.fileio.writeFile(style.spriteImage.data, at: "\(spritePath)/sprite.png"))
-        fileWrites.append(request.fileio.writeFile(style.spriteJson2x.data, at: "\(spritePath)/sprite@2x.json"))
-        fileWrites.append(request.fileio.writeFile(style.spriteImage2x.data, at: "\(spritePath)/sprite@2x.png"))
-        return fileWrites.flatten(on: request.eventLoop).map({.ok})
+        try await request.fileio.writeFile(ByteBuffer(data: modifiedStyleData), at: stylePath).get()
+        try await request.fileio.writeFile(ByteBuffer(data: spriteJsonData), at: "\(spritePath)/sprite.json").get()
+        try await request.fileio.writeFile(ByteBuffer(data: spriteImageData), at: "\(spritePath)/sprite.png").get()
+        try await request.fileio.writeFile(ByteBuffer(data: spriteJson2xData), at: "\(spritePath)/sprite@2x.json").get()
+        try await request.fileio.writeFile(ByteBuffer(data: spriteImage2xData), at: "\(spritePath)/sprite@2x.png").get()
+        return .ok
+    }
+
+
+    internal func extractFile(request: Request, archive: Archive, fileName: String) async throws -> Data {
+        guard let entry = archive[fileName] else {
+            throw Abort(.badRequest, reason: "\(fileName) is required")
+        }
+        let promise = request.eventLoop.makePromise(of: Data.self)
+        var data = Data()
+        _ = try archive.extract(entry, consumer: { bytes in
+            data.append(bytes)
+            if data.count >= entry.uncompressedSize {
+                promise.succeed(data)
+            }
+        })
+        return try await promise.futureResult.get()
+    }
+
+    internal func extractDataFromZip(request: Request, style: inout SaveStyleZip) async throws -> (styleJson: Data, spriteJson: Data, spriteImage: Data, spriteJson2x: Data, spriteImage2x: Data) {
+        guard let zipData = style.zip.data.readData(length: style.zip.data.readableBytes), let archive = Archive(data: zipData, accessMode: .read) else {
+            throw Abort(.badRequest, reason: "zip is invalid")
+        }
+        let styleJsonData = try await extractFile(request: request, archive: archive, fileName: "style.json")
+        let spriteJsonData = try await extractFile(request: request, archive: archive, fileName: "sprite.json")
+        let spriteImageData = try await extractFile(request: request, archive: archive, fileName: "sprite.png")
+        let spriteJson2xData = try await extractFile(request: request, archive: archive, fileName: "sprite@2x.json")
+        let spriteImage2xData = try await extractFile(request: request, archive: archive, fileName: "sprite@2x.png")
+        return (styleJsonData, spriteJsonData, spriteImageData, spriteJson2xData, spriteImage2xData)
+    }
+
+    internal func extractDataFromFiles(style: inout SaveStyleFiles) throws -> (styleJson: Data, spriteJson: Data, spriteImage: Data, spriteJson2x: Data, spriteImage2x: Data) {
+        guard let styleJsonData = style.styleJson.data.readData(length: style.styleJson.data.readableBytes) else {
+            throw Abort(.badRequest, reason: "style.json is required")
+        }
+        guard let spriteJsonData = style.spriteJson.data.readData(length: style.spriteJson.data.readableBytes) else {
+            throw Abort(.badRequest, reason: "sprite.json is required")
+        }
+        guard let spriteImageData = style.spriteImage.data.readData(length: style.spriteImage.data.readableBytes) else {
+            throw Abort(.badRequest, reason: "sprite.png is required")
+        }
+        guard let spriteJson2xData = style.spriteJson2x.data.readData(length: style.spriteJson2x.data.readableBytes) else {
+            throw Abort(.badRequest, reason: "sprite@2x.json is required")
+        }
+        guard let spriteImage2xData = style.spriteImage2x.data.readData(length: style.spriteImage2x.data.readableBytes) else {
+            throw Abort(.badRequest, reason: "sprite@2x.png is required")
+        }
+        return (styleJsonData, spriteJsonData, spriteImageData, spriteJson2xData, spriteImage2xData)
     }
 
     internal func deleteLocal(request: Request) throws -> EventLoopFuture<HTTPStatus> {
@@ -236,7 +304,7 @@ internal class StylesController {
         }
     }
     
-    private func analyseAvilableIcons(request: Request, id: String) -> EventLoopFuture<([String])> {
+    private func analyseAvailableIcons(request: Request, id: String) -> EventLoopFuture<[String]> {
         return request.application.fileio.openFile(
             path: "\(folder)/\(id)/sprite.json",
             mode: .read,

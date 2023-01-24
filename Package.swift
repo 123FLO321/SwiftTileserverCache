@@ -10,7 +10,8 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/vapor/vapor", .upToNextMinor(from: "4.69.1")),
         .package(url: "https://github.com/vapor/leaf", .upToNextMinor(from: "4.2.4")),
-        .package(url: "https://github.com/JohnSundell/ShellOut", .upToNextMinor(from: "2.3.0"))
+        .package(url: "https://github.com/JohnSundell/ShellOut", .upToNextMinor(from: "2.3.0")),
+        .package(url: "https://github.com/weichsel/ZIPFoundation.git", .upToNextMajor(from: "0.9.16"))
     ],
     targets: [
         .target(
@@ -18,7 +19,8 @@ let package = Package(
             dependencies: [
                 .product(name: "Vapor", package: "vapor"),
                 .product(name: "Leaf", package: "leaf"),
-                .product(name: "ShellOut", package: "ShellOut")
+                .product(name: "ShellOut", package: "ShellOut"),
+                .product(name: "ZIPFoundation", package: "ZIPFoundation")
             ]
         ),
         .executableTarget(

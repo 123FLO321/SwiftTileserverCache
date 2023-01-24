@@ -7,15 +7,22 @@
 
             function addStyle() {
                 files = Array.from($('\#files').prop('files'))
-                if (!files.some(file => file.name == 'style.json')) {
+                const hasZip = files.some(file => file.name.endsWith('.zip'))
+                const hasStyleJson = files.some(file => file.name == 'style.json')
+                const hasSpriteJson = files.some(file => file.name == 'sprite.json')
+                const hasSpritePng = files.some(file => file.name == 'sprite.png')
+                const hasSpriteJson2x = files.some(file => file.name == 'sprite@2x.json')
+                const hasSpritePng2x = files.some(file => file.name == 'sprite@2x.png')
+
+                if (!hasZip && !hasStyleJson) {
                     alert('Missing style.json')
-                } else if (!files.some(file => file.name == 'sprite.json')) {
+                } else if (!hasZip && !hasSpriteJson) {
                     alert('Missing sprite.json')
-                } else if (!files.some(file => file.name == 'sprite.png')) {
+                } else if (!hasZip && !hasSpritePng) {
                     alert('Missing sprite.png')
-                } else if (!files.some(file => file.name == 'sprite@2x.json')) {
+                } else if (!hasZip && !hasSpriteJson2x) {
                     alert('Missing sprite@2x.json')
-                } else if (!files.some(file => file.name == 'sprite@2x.png')) {
+                } else if (!hasZip && !hasSpritePng2x) {
                     alert('Missing sprite@2x.png')
                 } else {
                     uploadAll()
@@ -31,6 +38,7 @@
                 data.append("spriteImage", files.find(file => file.name == 'sprite.png'));
                 data.append("spriteJson2x", files.find(file => file.name == 'sprite@2x.json'));
                 data.append("spriteImage2x", files.find(file => file.name == 'sprite@2x.png'));
+                data.append("zip", files.find(file => file.name.endsWith('.zip')));
                 data.append("id", $('\#id').val())
                 data.append("name", $('\#name').val())
                 $.ajax({
@@ -91,8 +99,8 @@
                     <input id="id" type="text" class="form-control" required>
                 </div>
                 <div class="form-group">
-                    Files (<a target="_blank" href="https://maputnik.github.io/editor/#17/#(previewLatitude)/#(previewLongitude)">Design Custom Styles</a>) [Required: style.json, sprite.json, sprite.json, sprite.png, sprite@2x.json, sprite@2x.png]
-                    <input id="files" type="file" class="form-control" accept=".json,.png" multiple required>
+                    Files (<a target="_blank" href="https://maputnik.github.io/editor/#17/#(previewLatitude)/#(previewLongitude)">Design Custom Styles</a>) [Required: style.json, sprite.json, sprite.json, sprite.png, sprite@2x.json, sprite@2x.png (or in a zip file)]
+                    <input id="files" type="file" class="form-control" accept=".json,.png,.zip" multiple required>
                 </div>
                 <button id="submit" type="submit" class="btn btn-primary float-right">Add Style</button>
             </form>
