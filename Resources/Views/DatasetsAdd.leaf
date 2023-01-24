@@ -15,7 +15,19 @@
             function addDataset() {
                 startedLoading()
                 const url = $('\#url').val()
+                const file = $('\#file').prop('files')[0]
                 const name = $('\#name').val()
+                if (url) {
+                    addDatasetUrl(name, url)
+                } else if (file) {
+                    addDatasetFile(name, file)
+                } else {
+                    stoppedLoading('Please specify either a URL or a File!')
+                }
+                return false;
+            }
+
+            function addDatasetUrl(name, url) {
                 const webSocket = new WebSocket(window.location.protocol.replace('http','ws')+'//'+window.location.host+'/admin/api/datasets/add')
                 webSocket.onopen = function() {
                     webSocket.send(name+';'+url)
@@ -31,10 +43,28 @@
                         $('\#progress-text').html("Combining Datasets...")
                     } else {
                         webSocket.close()
-                        stoppedLoading(event.data ? 'Failed to download dataset: ' + event.data : 'Failed to connect to the server!')
+                        stoppedLoading(event.data ? 'Failed to download Dataset: ' + event.data : 'Failed to connect to the server!')
                     }
                 }
-                return false;
+            }
+
+            function addDatasetFile(name, file) {
+                let data = new FormData();
+                data.append("name", name);
+                data.append("file", file);
+                $.ajax({
+                    type: "POST",
+                    data: data,
+                    url: "/admin/api/datasets/add",
+                    processData: false,
+                    contentType: false,
+                    success: function() {
+                        window.location = '/admin/datasets'
+                    },
+                    error: function(data, error, errorText) {
+                        stoppedLoading('Failed to upload Dataset: ' + (data.responseJSON ? data.responseJSON.reason : errorText))
+                    }
+                })
             }
 
             function setProgress(text, percentage) {
@@ -42,7 +72,7 @@
             }
 
             function startedLoading() {
-                $('\#progress-text').html("Downloading Dataset...")
+                $('\#progress-text').html($('\#file').prop('files').length ? "Uploading and Combining Dataset..." : "Downloading Dataset...")
                 $('\#submit').prop('disabled', true)
                 $('\#progress').show()
             }
@@ -63,9 +93,16 @@
                     Dataset Name
                     <input id="name" maxlength="50" type="text" class="form-control" name="name" required>
                 </div>
-                <div class="form-group">
-                    Dataset URL (<a target="_blank" href="https://openmaptiles.com/downloads/planet/">Download from OpenMapTiles</a>)
-                    <input id="url" type="url" class="form-control" name="url" required>
+                <div>Specify either a URL to download or a File to upload. (<a target="_blank" href="https://openmaptiles.com/downloads/planet/">Download from OpenMapTiles</a>)</div>
+                <div class="row g-3">
+                    <div class="col form-group">
+                        Dataset URL
+                        <input id="url" type="url" class="form-control" name="url">
+                    </div>
+                    <div class="col form-group">
+                        Dataset File
+                        <input id="file" type="file" class="form-control" accept=".mbtiles">
+                    </div>
                 </div>
                 <button id="submit" type="submit" class="btn btn-primary float-right">Add Dataset</button>
             </form>

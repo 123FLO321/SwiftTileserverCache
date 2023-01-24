@@ -2,6 +2,11 @@ import Vapor
 
 internal class DatasetsController {
 
+    struct SaveDataset: Content {
+        var name: String
+        var file: File
+    }
+
     private static let tileJoinCommand = "/usr/local/bin/tile-join"
 
     private let folder: String
@@ -30,7 +35,7 @@ internal class DatasetsController {
                     request.logger.info("Downloading \(name).mbtiles done")
                     websocket.send("downloaded")
                     request.logger.info("Combining mbtiles")
-                    self.combineTiles(request: request, websocket: websocket).whenComplete { (result) in
+                    self.combineTiles(request: request).whenComplete { (result) in
                         switch result {
                         case .success:
                             request.logger.info("Combining mbtiles done")
@@ -60,7 +65,7 @@ internal class DatasetsController {
             }
             websocket.send("deleted")
             request.logger.info("Combining mbtiles")
-            self.combineTiles(request: request, websocket: websocket).whenComplete { (result) in
+            self.combineTiles(request: request).whenComplete { (result) in
                 switch result {
                 case .success:
                     request.logger.info("Combining mbtiles done")
@@ -73,6 +78,13 @@ internal class DatasetsController {
         }
     }
 
+    internal func add(request: Request) throws -> EventLoopFuture<HTTPStatus> {
+        let dataset = try request.content.decode(SaveDataset.self)
+        return request.fileio.writeFile(dataset.file.data, at: self.listFolder + "/\(dataset.name).mbtiles").flatMap {
+            self.combineTiles(request: request).map { .ok }
+        }
+    }
+
     // MARK: - Utils
 
     internal func getDatasets() throws -> [String] {
@@ -81,7 +93,7 @@ internal class DatasetsController {
             .map({ $0.deletingPathExtension().lastPathComponent })
     }
 
-    private func combineTiles(request: Request, websocket: WebSocket) -> EventLoopFuture<Void> {
+    private func combineTiles(request: Request) -> EventLoopFuture<Void> {
         let datasets: [String]
         do {
             datasets = try getDatasets()

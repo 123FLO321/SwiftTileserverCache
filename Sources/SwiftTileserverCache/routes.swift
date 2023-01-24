@@ -53,6 +53,7 @@ func routes(_ app: Application) throws {
     let datasetController = DatasetsController(folder: "TileServer/Datasets")
     protected.webSocket("api", "datasets", "add", onUpgrade: datasetController.download)
     protected.webSocket("api", "datasets", "delete", onUpgrade: datasetController.delete)
+    protected.on(.POST, "api", "datasets", "add", body: .collect(maxSize: "128gb"), use: datasetController.add)
 
     protected.on(.POST, "api", "fonts", "add", body: .collect(maxSize: "64mb"), use: fontsController.add)
     protected.delete("api", "fonts", "delete", ":name", use: fontsController.delete)
