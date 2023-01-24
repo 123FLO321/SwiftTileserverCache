@@ -41,7 +41,7 @@
         </script>
     #endexport
     #export("content"):
-        <h1 align="center">Datasets</h1>
+        <h1 align="center">Templates</h1>
         <br>
         <div style="width:90%; margin-left: 5%; mergin-right: 5%">
             <table style="width:100%;" id="table" class="table table-striped table-bordered dt-responsive nowrap">
