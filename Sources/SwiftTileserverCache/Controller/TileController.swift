@@ -1,22 +1,15 @@
-//
-//  StaticMapController.swift
-//  SwiftTileserverCache
-//
-//  Created by Florian Kostenzer on 08.05.20.
-//
-
 import Vapor
 
 internal class TileController {
 
     private let tileServerURL: String
     private let statsController: StatsController
-    private let tiles: [String: String]
+    private let stylesController: StylesController
 
-    internal init(tileServerURL: String, tiles: [(style: Style, url: String)], statsController: StatsController) {
+    internal init(tileServerURL: String, statsController: StatsController, stylesController: StylesController) {
         self.tileServerURL = tileServerURL
-        self.tiles = tiles.reduce(into: [String: String](), { $0[$1.style.id] = $1.url })
         self.statsController = statsController
+        self.stylesController = stylesController
     }
 
     // MARK: - Routes
@@ -48,7 +41,7 @@ internal class TileController {
 
         let scaleString = scale == 1 ? "" : "@\(scale)x"
         let tileURL: String
-        if let url = tiles[style] {
+        if let url = stylesController.getExternalStyle(name: style)?.url {
             tileURL = url.replacingOccurrences(of: "{z}", with: "\(z)")
                          .replacingOccurrences(of: "{x}", with: "\(x)")
                          .replacingOccurrences(of: "{y}", with: "\(y)")
@@ -59,7 +52,7 @@ internal class TileController {
             tileURL = "\(tileServerURL)/styles/\(style)/\(z)/\(x)/\(y)\(scaleString).\(format)"
         }
         return APIUtils.downloadFile(request: request, from: tileURL, to: path, type: "image").flatMapError { error in
-            return request.eventLoop.makeFailedFuture(Abort(.badRequest, reason: "Failed to load tile (\(error.localizedDescription))"))
+            return request.eventLoop.makeFailedFuture(Abort(.badRequest, reason: "Failed to load tile: \(tileURL) (\(error.localizedDescription))"))
         }.always { result in
             if case .success = result {
                 request.application.logger.info("Served a generated tile")

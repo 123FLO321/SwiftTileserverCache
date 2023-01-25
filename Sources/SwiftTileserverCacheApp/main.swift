@@ -1,10 +1,3 @@
-//
-//  main.swift
-//  SwiftTileserverCacheApp
-//
-//  Created by Florian Kostenzer on 01.11.19.
-//
-
 import SwiftTileserverCache
 import Vapor
 

@@ -1,10 +1,3 @@
-//
-//  MultiStaticMapController.swift
-//  SwiftTileserverCache
-//
-//  Created by Florian Kostenzer on 08.05.20.
-//
-
 import Vapor
 import Leaf
 
@@ -55,7 +48,7 @@ internal class MultiStaticMapController {
 
     // MARK: - Utils
 
-    private func handleRequest(request: Request, multiStaticMap: MultiStaticMap) -> EventLoopFuture<Response> {
+    internal func handleRequest(request: Request, multiStaticMap: MultiStaticMap) -> EventLoopFuture<Response> {
         let path = multiStaticMap.path
         if !FileManager.default.fileExists(atPath: path) {
             return generateStaticMapAndResponse(request: request, path: path, multiStaticMap: multiStaticMap).always { result in

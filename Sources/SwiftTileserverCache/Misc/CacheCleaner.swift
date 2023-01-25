@@ -1,10 +1,3 @@
-//
-//  CacheCleaner.swift
-//  SwiftTileserverCache
-//
-//  Created by Florian Kostenzer on 02.11.19.
-//
-
 import Foundation
 import Vapor
 
@@ -14,15 +7,19 @@ public class CacheCleaner {
     private let folder: URL
     private let maxAgeMinutes: UInt32
 
-    public init(folder: String, maxAgeMinutes: UInt32, clearDelaySeconds: UInt32=60) {
+    public init(folder: String, maxAgeMinutes: UInt32?, clearDelaySeconds: UInt32?) {
         self.folder = URL(fileURLWithPath: folder)
-        self.maxAgeMinutes = maxAgeMinutes
+        self.maxAgeMinutes = maxAgeMinutes ?? 0
         self.logger = Logger(label: "CacheCleaner-\(folder)")
         let thread = DispatchQueue(label: "CacheCleaner-\(folder)")
-        thread.async {
-            while true {
-                self.runOnce()
-                sleep(clearDelaySeconds)
+        try? FileManager.default.createDirectory(atPath: folder, withIntermediateDirectories: true)
+        if maxAgeMinutes != nil && clearDelaySeconds != nil {
+            self.logger.notice("Starting CacheCleaner for \(folder) with maxAgeMinutes: \(maxAgeMinutes!) and clearDelaySeconds: \(clearDelaySeconds!)")
+            thread.async {
+                while true {
+                    self.runOnce()
+                    sleep(clearDelaySeconds!)
+                }
             }
         }
     }

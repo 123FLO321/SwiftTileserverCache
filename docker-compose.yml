@@ -1,7 +1,8 @@
 version: '3.1'
 services:
   tileserver:
-    image: klokantech/tileserver-gl:latest
+    image: maptiler/tileserver-gl:latest
+    command: -p 8080
     container_name: tileserver
     restart: unless-stopped
     tty: true
@@ -15,9 +16,10 @@ services:
     volumes:
       - ./Cache:/SwiftTileserverCache/Cache
       - ./Templates:/SwiftTileserverCache/Templates
-#     - ./Markers/:/SwiftTileserverCache/Markers
+      - ./TileServer:/SwiftTileserverCache/TileServer
+      - ./Markers/:/SwiftTileserverCache/Markers
     environment:
-      TILE_SERVER_URL: http://tileserver # Leave this unless tileserver is external!
+      TILE_SERVER_URL: http://tileserver:8080 # Leave this unless tileserver is external!
       TILE_CACHE_MAX_AGE_MINUTES: 10080 # 7 Days
       TILE_CACHE_DELAY_SECONDS: 3600 # 1 Hour
       STATIC_CACHE_MAX_AGE_MINUTES: 10080 # 7 Days
@@ -26,8 +28,13 @@ services:
       STATIC_MULTI_CACHE_DELAY_SECONDS: 900 # 15 Minutes
       MARKER_CACHE_MAX_AGE_MINUTES: 1440 # 1 Day
       MARKER_CACHE_DELAY_SECONDS: 3600 # 1 Hour
+#      REGENERATABLE_CACHE_MAX_AGE_MINUTES: 43200 # 1 Month
+#      REGENERATABLE_CACHE_DELAY_SECONDS: 3600 # 1 Hour
       TEMPLATES_CACHE_DELAY_SECONDS: 60 # 1 Minute
-#      TILE_URL_MAPBOX_SATTELITE: https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}{@scale}.{format}?access_token=xxx
+#      ADMIN_USERNAME: admin
+#      ADMIN_PASSWORD: ChangeMe!
+#      PREVIEW_LATIDUDE: 47.377105
+#      PREVIEW_LONGITUDE: 8.541655
 #      MAX_BODY_SIZE: 1mb
     ports:
       - 9000:9000

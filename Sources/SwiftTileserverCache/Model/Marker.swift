@@ -1,10 +1,3 @@
-//
-//  Marker.swift
-//  SwiftTileserverCache
-//
-//  Created by Florian Kostenzer on 01.11.19.
-//
-
 import Foundation
 
 public struct Marker: Codable, Hashable, Drawable {

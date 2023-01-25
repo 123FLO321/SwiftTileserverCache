@@ -1,10 +1,3 @@
-//
-//  FileToucher.swift
-//  SwiftTileserverCache
-//
-//  Created by Florian Kostenzer on 06.05.20.
-//
-
 import Foundation
 import Vapor
 

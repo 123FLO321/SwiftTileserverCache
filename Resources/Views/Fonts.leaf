@@ -1,0 +1,71 @@
+#extend("Resources/Views/Base"):
+    #export("stylesheets"):
+    #endexport
+    #export("scripts"):
+        <script>
+            $(document).ready(function() {
+                $('\#table').DataTable({
+                    ordering: true,
+                    paging: true,
+                    dom: 'Bfrtip',
+                    buttons: {
+                        buttons: [{
+                            text: 'Add Fonts',
+                            className: 'btn-success',
+                            action: function () {
+                                window.location = '/admin/fonts/add'
+                            }
+                        }],
+                        dom: {
+                            button: {
+                                className: 'btn'
+                            }
+                        }
+                    }
+                })
+            })
+
+            function delteFont(font) {
+                $.ajax({
+                    type: "DELETE",
+                    url: "/admin/api/fonts/delete/" + font,
+                    success: function(id) {
+                        window.location.reload()
+                    },
+                    error: function(data, error, errorText) {
+                        alert('Failed to delete Font: ' + (data.responseJSON ? data.responseJSON.reason : errorText))
+                    }
+                })
+                return false
+            }
+        </script>
+    #endexport
+    #export("content"):
+        <h1 align="center">Fonts</h1>
+        <br>
+        <div style="width:90%; margin-left: 5%; mergin-right: 5%">
+            <table style="width:100%;" id="table" class="table table-striped table-bordered dt-responsive nowrap">
+                <thead>
+                    <tr>
+                        <th>Font</th>
+                        <th style="width: 100px">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    #for(font in fonts):
+                    <tr>
+                        <td style="vertical-align:middle">
+                            #(font)
+                        </td>
+                        <td style="vertical-align:middle">
+                            <div style="display: flex" class="btn-group" role="group" aria-label="Basic example">
+                                <button style="flex: 1" role="button" class="btn btn-danger" onclick="delteFont('#(font)')">Delete</a>
+                            </div>
+                        </td>
+                    </tr>
+                    #endfor
+                </tbody>
+            </table>
+        </div>
+    #endexport
+#endextend

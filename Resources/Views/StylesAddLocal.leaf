@@ -1,0 +1,114 @@
+#extend("Resources/Views/Base"):
+    #export("stylesheets"):
+    #endexport
+    #export("scripts"):
+        <script>
+            var files
+
+            function addStyle() {
+                files = Array.from($('\#files').prop('files'))
+                const hasZip = files.some(file => file.name.endsWith('.zip'))
+                const hasStyleJson = files.some(file => file.name == 'style.json')
+                const hasSpriteJson = files.some(file => file.name == 'sprite.json')
+                const hasSpritePng = files.some(file => file.name == 'sprite.png')
+                const hasSpriteJson2x = files.some(file => file.name == 'sprite@2x.json')
+                const hasSpritePng2x = files.some(file => file.name == 'sprite@2x.png')
+
+                if (!hasZip && !hasStyleJson) {
+                    alert('Missing style.json')
+                } else if (!hasZip && !hasSpriteJson) {
+                    alert('Missing sprite.json')
+                } else if (!hasZip && !hasSpritePng) {
+                    alert('Missing sprite.png')
+                } else if (!hasZip && !hasSpriteJson2x) {
+                    alert('Missing sprite@2x.json')
+                } else if (!hasZip && !hasSpritePng2x) {
+                    alert('Missing sprite@2x.png')
+                } else {
+                    uploadAll()
+                }
+                return false
+            }
+
+            function uploadAll() {
+                startedLoading(`Processing`)
+                let data = new FormData();
+                data.append("styleJson", files.find(file => file.name == 'style.json'));
+                data.append("spriteJson", files.find(file => file.name == 'sprite.json'));
+                data.append("spriteImage", files.find(file => file.name == 'sprite.png'));
+                data.append("spriteJson2x", files.find(file => file.name == 'sprite@2x.json'));
+                data.append("spriteImage2x", files.find(file => file.name == 'sprite@2x.png'));
+                data.append("zip", files.find(file => file.name.endsWith('.zip')));
+                data.append("id", $('\#id').val())
+                data.append("name", $('\#name').val())
+                $.ajax({
+                    type: "POST",
+                    data: data,
+                    url: "/admin/api/styles/local/add",
+                    processData: false,
+                    contentType: false,
+                    success: function(id) {
+                        setProgress("Waiting for TilesServer-GL")
+                        setInterval(() => {
+                             $.ajax({
+                                type: "GET",
+                                url: "/styles",
+                                success: function(styles) {
+                                    let id = $('\#id').val()
+                                    if (styles.some(style => style.id == id)) {
+                                        window.location = '/admin/styles'
+                                    }
+                                }
+                            })
+                        }, 1000)
+                    },
+                    error: function(data, error, errorText) {
+                        stoppedLoading('Failed to upload Style: ' + (data.responseJSON ? data.responseJSON.reason : errorText))
+                    }
+                })
+            }
+
+            function setProgress(text) {
+                $('\#progress-text').html(text)
+            }
+
+            function startedLoading(text) {
+                $('\#progress-text').html(text)
+                $('\#submit').prop('disabled', true)
+                $('\#progress').show()
+            }
+
+            function stoppedLoading(error) {
+                $('\#submit').prop('disabled', false)
+                $('\#progress').hide()
+                alert(error)
+            }
+        </script>
+    #endexport
+    #export("content"):
+        <h1 align="center">Add Local Style</h1>
+        <br>
+        <div style="width:90%; margin-left: 5%; mergin-right: 5%">
+            <form onsubmit="return addStyle()">
+                <div class="form-group">
+                    Name
+                    <input id="name" type="text" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    ID
+                    <input id="id" type="text" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    Files (<a target="_blank" href="https://maputnik.github.io/editor/#17/#(previewLatitude)/#(previewLongitude)">Design Custom Styles</a>) [Required: style.json, sprite.json, sprite.json, sprite.png, sprite@2x.json, sprite@2x.png (or in a zip file)]
+                    <input id="files" type="file" class="form-control" accept=".json,.png,.zip" multiple required>
+                </div>
+                <button id="submit" type="submit" class="btn btn-primary float-right">Add Style</button>
+            </form>
+        </div>
+        <div id="progress" class="progress" style="width:90%; margin-left: 5%; mergin-right: 5%; margin-top: 70px; display: none;">
+          <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">
+            <span id="progress-text"></span>
+          </div>
+        </div>
+    #endexport
+#endextend

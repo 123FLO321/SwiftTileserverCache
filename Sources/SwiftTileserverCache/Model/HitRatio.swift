@@ -1,10 +1,3 @@
-//
-//  HitRatio.swift
-//  SwiftTileserverCache
-//
-//  Created by Florian Kostenzer on 09.05.20.
-//
-
 import Foundation
 
 public struct HitRatio: Codable {

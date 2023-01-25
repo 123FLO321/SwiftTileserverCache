@@ -1,10 +1,3 @@
-//
-//  FormatTag.swift
-//  SwiftTileserverCache
-//
-//  Created by Florian Kostenzer on 12.05.20.
-//
-
 import Vapor
 import Leaf
 
@@ -15,7 +8,7 @@ class FormatTag: LeafTag {
           let anyArgument = ctx.parameters.first,
           let format = ctx.parameters.last?.string,
           let argument: CVarArg = (anyArgument.int ?? anyArgument.double) else {
-            throw "format tag rquires exactly 2 Argument: (argument: Int|Double, format: String)"
+            throw Abort(.badRequest, reason: "format tag rquires exactly 2 Argument: (argument: Int|Double, format: String)")
         }
         return LeafData.string(String(format: format, argument))
     }

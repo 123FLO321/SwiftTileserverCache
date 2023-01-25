@@ -1,10 +1,3 @@
-//
-//  Circle.swift
-//  SwiftTileserverCache
-//
-//  Created by Florian Kostenzer on 14.09.20.
-//
-
 import Foundation
 
 public struct Circle: Codable, Hashable, Drawable {

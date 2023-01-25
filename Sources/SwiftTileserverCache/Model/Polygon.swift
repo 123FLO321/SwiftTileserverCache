@@ -1,10 +1,3 @@
-//
-//  Polygon.swift
-//  SwiftTileserverCache
-//
-//  Created by Florian Kostenzer on 05.11.19.
-//
-
 import Foundation
 
 public struct Polygon: Codable, Hashable, Drawable {

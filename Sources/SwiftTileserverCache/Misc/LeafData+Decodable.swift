@@ -1,10 +1,3 @@
-//
-//  LeafData+Decodable.swift
-//  SwiftTileserverCache
-//
-//  Created by Florian Kostenzer on 11.05.20.
-//
-
 import Foundation
 import Vapor
 import Leaf
