@@ -14,3 +14,4 @@ Package.resolved
 .env
 .env.development
 docker-compose.development.yml
+docker-compose.override.yml
