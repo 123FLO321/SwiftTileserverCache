@@ -13,5 +13,4 @@ Package.resolved
 .swiftpm/
 .env
 .env.development
-docker-compose.development.yml
-docker-compose.override.yml
+docker-compose.*.yml
