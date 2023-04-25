@@ -310,8 +310,11 @@ public class ImageUtils {
     }
 
     private static func removeImages(request: Request, paths: [String]) -> Void {
-        request.logger.info("Clearing \(paths.count) potentially broken images")
-        try? escapedShellOut(to: "rm", arguments: ["-f"] + paths)
+        let cachePaths = paths.filter { $0.starts(with: "Cache/") }
+        if cachePaths.count > 0 {
+            request.logger.info("Clearing \(cachePaths.count) potentially broken images")
+            try? escapedShellOut(to: "rm", arguments: ["-f"] + cachePaths)
+        }
     }
 
 }
